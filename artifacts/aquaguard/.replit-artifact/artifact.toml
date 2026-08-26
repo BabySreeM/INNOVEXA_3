@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "AquaGuard Dashboard"
+description = "A responsive monitoring and control dashboard for an ESP32-based water distribution and leak-isolation system, with live Firebase data and a fully featured Demo Mode for testing fault scenarios."
+version = "1.0.0"
+id = "artifacts/aquaguard"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 24874
+
+[services.development]
+run = "pnpm --filter @workspace/aquaguard run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/aquaguard", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/aquaguard/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "24874"
+BASE_PATH = "/"
