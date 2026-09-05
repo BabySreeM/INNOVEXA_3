@@ -1,51 +1,62 @@
 import express from 'express';
 import cors from 'cors';
-import qrcode from 'qrcode-terminal';
+import makeWASocket, { useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } from '@whiskeysockets/baileys';
 import fs from 'fs';
-import pkg from 'whatsapp-web.js';
-const { Client, LocalAuth } = pkg;
+import path from 'path';
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-let chromePath = '';
-if (fs.existsSync('C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe')) {
-  chromePath = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
-} else if (fs.existsSync('C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe')) {
-  chromePath = 'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe';
-} else if (fs.existsSync('C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe')) {
-  chromePath = 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe';
-}
-
-const client = new Client({
-  authStrategy: new LocalAuth(),
-  puppeteer: {
-    headless: true,
-    executablePath: chromePath || undefined,
-    args: ['--no-sandbox', '--disable-setuid-sandbox']
-  }
-});
-
+let sock = null;
 let isReady = false;
 let currentQR = '';
 
-client.on('qr', (qr) => {
-  currentQR = qr;
-  console.log('\n==================================================');
-  console.log('📲 SCAN THIS QR CODE WITH YOUR WHATSAPP TO CONNECT:');
-  console.log('==================================================\n');
-  qrcode.generate(qr, { small: true });
-});
+async function connectToWhatsApp() {
+  const authFolder = path.join(process.cwd(), 'baileys_cloud_auth');
+  if (!fs.existsSync(authFolder)) {
+    fs.mkdirSync(authFolder, { recursive: true });
+  }
 
-client.on('ready', () => {
-  isReady = true;
-  currentQR = '';
-  console.log('\n==================================================');
-  console.log('✅ INNOVEXA WHATSAPP BOT CONNECTED & READY!');
-  console.log('==================================================\n');
-});
+  const { state, saveCreds } = await useMultiFileAuthState(authFolder);
+  const { version } = await fetchLatestBaileysVersion().catch(() => ({ version: [2, 3000, 1015901307] }));
+
+  sock = makeWASocket({
+    version,
+    auth: state,
+    printQRInTerminal: true,
+  });
+
+  sock.ev.on('creds.update', saveCreds);
+
+  sock.ev.on('connection.update', (update) => {
+    const { connection, lastDisconnect, qr } = update;
+    
+    if (qr) {
+      currentQR = qr;
+      console.log('\n==================================================');
+      console.log('📲 FRESH WHATSAPP QR CODE GENERATED FOR CLOUD:');
+      console.log('==================================================\n');
+    }
+
+    if (connection === 'close') {
+      isReady = false;
+      const statusCode = lastDisconnect?.error?.output?.statusCode;
+      const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
+      console.log('Baileys connection closed. Reconnecting:', shouldReconnect);
+      if (shouldReconnect) {
+        setTimeout(connectToWhatsApp, 3000);
+      }
+    } else if (connection === 'open') {
+      isReady = true;
+      currentQR = '';
+      console.log('\n==================================================');
+      console.log('✅ INNOVEXA WHATSAPP BOT CONNECTED VIA BAILEYS CLOUD!');
+      console.log('==================================================\n');
+    }
+  });
+}
 
 app.get('/', (req, res) => res.redirect('/qr'));
 
@@ -65,7 +76,7 @@ app.get('/qr', (req, res) => {
         <body>
           <div class="card">
             <h1>✅ WhatsApp Bot Connected & Active!</h1>
-            <p>Your local dashboard is linked. Telemetry alerts will dispatch in the background automatically.</p>
+            <p>Your cloud server is linked. Telemetry alerts will dispatch in the background automatically.</p>
           </div>
         </body>
       </html>
@@ -82,7 +93,7 @@ app.get('/qr', (req, res) => {
           <style>body { font-family: system-ui; background: #0f172a; color: white; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }</style>
         </head>
         <body>
-          <h2>Initializing WhatsApp Client... Please wait 5 seconds...</h2>
+          <h2>Initializing WhatsApp Client... Please wait 3 seconds...</h2>
         </body>
       </html>
     `);
@@ -94,8 +105,8 @@ app.get('/qr', (req, res) => {
     <!DOCTYPE html>
     <html>
       <head>
-        <title>Innovexa WhatsApp QR Code</title>
-        <meta http-equiv="refresh" content="8">
+        <title>Innovexa Cloud WhatsApp QR Code</title>
+        <meta http-equiv="refresh" content="6">
         <style>
           body { font-family: system-ui; background: #0b1329; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
           .card { background: #172554; padding: 2.5rem; border-radius: 1.5rem; text-align: center; border: 1px solid #1e40af; max-width: 440px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); }
@@ -106,10 +117,10 @@ app.get('/qr', (req, res) => {
       </head>
       <body>
         <div class="card">
-          <h2>📲 Link WhatsApp Bot</h2>
+          <h2>📲 Link WhatsApp Cloud Server</h2>
           <p>Scan this QR code with WhatsApp on your phone (<strong>WhatsApp $\rightarrow$ Settings $\rightarrow$ Linked Devices $\rightarrow$ Link a Device</strong>).</p>
           <img src="${qrImageUrl}" alt="WhatsApp QR Code" />
-          <p style="font-size: 11px; opacity: 0.8;">Auto-refreshes every 8 seconds</p>
+          <p style="font-size: 11px; opacity: 0.8;">Auto-refreshes every 6 seconds</p>
         </div>
       </body>
     </html>
@@ -122,14 +133,14 @@ app.post('/send-alert', async (req, res) => {
     return res.status(400).json({ error: 'Missing phone or message' });
   }
 
-  if (!isReady) {
+  if (!isReady || !sock) {
     return res.status(503).json({ error: 'WhatsApp Bot is not connected yet. Scan QR code.' });
   }
 
   try {
     const cleanNumber = phone.replace(/[^0-9]/g, '');
-    const chatId = `${cleanNumber}@c.us`;
-    await client.sendMessage(chatId, message);
+    const jid = `${cleanNumber}@s.whatsapp.net`;
+    await sock.sendMessage(jid, { text: message });
     console.log(`⚡ Automated alert sent directly to ${phone}!`);
     res.json({ success: true, phone, timestamp: Date.now() });
   } catch (err) {
@@ -138,9 +149,8 @@ app.post('/send-alert', async (req, res) => {
   }
 });
 
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
-  console.log(`🤖 Innovexa WhatsApp Webhook Server listening on http://localhost:${PORT}`);
-  console.log('Initializing WhatsApp Client...');
-  client.initialize().catch((err) => console.error('Initialization error:', err));
+  console.log(`🤖 Innovexa Cloud Baileys Webhook Server listening on port ${PORT}`);
+  connectToWhatsApp();
 });
