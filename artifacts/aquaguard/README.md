@@ -1,12 +1,12 @@
-# AquaGuard Dashboard
+# Innovexa Dashboard
 
-AquaGuard is a responsive monitoring and control dashboard for an ESP32-based water distribution and leak-isolation prototype. It opens in a Firebase-not-configured state and includes a complete local Demo Mode so the operating model can be explored before the hardware is assembled.
+Innovexa is a responsive monitoring and control dashboard for an ESP32-based water distribution and leak-isolation prototype. It opens in a Firebase-not-configured state and includes a complete local Demo Mode so the operating model can be explored before the hardware is assembled.
 
 ## Run locally
 
 1. Copy `.env.example` to `.env` and fill in the Firebase web app values when a Realtime Database is available.
 2. Install dependencies with `pnpm install`.
-3. Start the app with the managed AquaGuard web workflow.
+3. Start the app with the managed Innovexa web workflow.
 
 Without Firebase values, choose **Run in Demo Mode** from the entry screen. The demo is intentionally local and does not fabricate live hardware data.
 

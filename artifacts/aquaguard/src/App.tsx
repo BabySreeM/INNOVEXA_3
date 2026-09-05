@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Activity, AlertTriangle, ArrowDownToLine, Check, CircleHelp, Download, Droplets, Gauge, GitBranch, History as HistoryIcon, LockKeyhole, Pause, Play, Radio, RotateCcw, ShieldCheck, SlidersHorizontal, Sparkles, TriangleAlert, X } from 'lucide-react';
-import { useAquaGuard } from './useAquaGuard';
+import { Activity, AlertTriangle, ArrowDownToLine, BellRing, Check, CircleHelp, Download, Droplets, Gauge, GitBranch, History as HistoryIcon, LockKeyhole, MessageSquare, Pause, Play, Radio, RotateCcw, ShieldCheck, SlidersHorizontal, Sparkles, TriangleAlert, Volume2, VolumeX, X } from 'lucide-react';
+import { useInnovexa } from './useInnovexa';
+import { getWhatsAppConfig, setWhatsAppConfig, generateWhatsAppUrl, playLeakAlert, sendAutomatedWhatsAppAlert } from './lib/audioAlerts';
 import './index.css';
 
 type Tab = 'Operations' | 'Controls' | 'Event Log' | 'History';
@@ -14,12 +15,12 @@ const timeAgo = (timestamp: number) => {
 };
 
 function Logo() {
-  return <div className="flex items-center gap-3" data-testid="brand-aquaguard">
+  return <div className="flex items-center gap-3" data-testid="brand-innovexa">
     <div className="relative flex h-10 w-10 items-center justify-center rounded-[13px] bg-primary text-primary-foreground shadow-sm">
       <Droplets size={21} strokeWidth={1.8} />
       <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full border-2 border-background bg-accent" />
     </div>
-    <div><div className="display-face text-[1.3rem] font-semibold leading-none tracking-tight">AquaGuard</div><div className="mt-1 text-[10px] font-semibold uppercase tracking-[.15em] text-muted-foreground">Reserve operations</div></div>
+    <div><div className="display-face text-[1.3rem] font-semibold leading-none tracking-tight">Innovexa</div><div className="mt-1 text-[10px] font-semibold uppercase tracking-[.15em] text-muted-foreground">Reserve operations</div></div>
   </div>;
 }
 
@@ -63,7 +64,50 @@ function StatusPill({ children, tone = 'neutral' }: { children: React.ReactNode;
   return <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold ${tone === 'good' ? 'bg-[#dbeadd] text-[#25614d]' : tone === 'warn' ? 'bg-[#f1e2bc] text-[#765e24]' : tone === 'alert' ? 'bg-[#f3d4cd] text-[#93483d]' : 'bg-secondary text-muted-foreground'}`} data-testid="status-pill">{children}</span>;
 }
 
-function Header({ activeTab, setActiveTab, demoActive, exitDemo, replayDemo, phase }: { activeTab: Tab; setActiveTab: (tab: Tab) => void; demoActive: boolean; exitDemo: () => void; replayDemo: () => void; phase: string }) {
+function AlertBanner({ aqua }: { aqua: any }) {
+  const isAlert = aqua.data.alerts.leak_detected || aqua.data.alerts.source_critical || aqua.data.commands.estop_triggered;
+  if (!isAlert) return null;
+
+  const phase = aqua.data.system.phase;
+  const isEstop = aqua.data.commands.estop_triggered;
+  const latestMessage = aqua.events?.[0]?.message || 'System protection engaged.';
+
+  const handleWhatsApp = () => {
+    const url = generateWhatsAppUrl({
+      phase: isEstop ? 'EMERGENCY_STOP' : phase,
+      message: latestMessage,
+      waterSaved: aqua.waterSaved,
+      priorityTank: aqua.data.commands?.priority_tank,
+    });
+    window.open(url, '_blank');
+  };
+
+  return (
+    <div className={`mb-6 flex flex-col justify-between gap-3 rounded-2xl border p-4 shadow-sm sm:flex-row sm:items-center ${isEstop ? 'border-[#e7c6be] bg-[#f8e9e4] text-[#93483d]' : 'border-[#e4d29d] bg-[#f8f3e5] text-[#765e24]'}`} data-testid="banner-alert-active">
+      <div className="flex items-center gap-3">
+        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${isEstop ? 'bg-[#f3d4cd] text-[#93483d]' : 'bg-[#f1e2bc] text-[#765e24]'}`}>
+          <BellRing size={20} className="animate-bounce" />
+        </div>
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold uppercase tracking-wider">{isEstop ? 'Emergency Halt' : 'Telemetry Alert Active'}</span>
+            <span className="h-1.5 w-1.5 rounded-full bg-current" />
+            <span className="text-xs font-medium">{phase.replace('_', ' ')}</span>
+          </div>
+          <p className="mt-0.5 text-xs opacity-90">{latestMessage}</p>
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        <button type="button" onClick={handleWhatsApp} className="btn-quiet flex items-center gap-2 rounded-xl border border-current/20 bg-background/60 px-3 py-2 text-xs font-semibold text-current hover:bg-background" data-testid="button-whatsapp-dispatch">
+          <MessageSquare size={15} className="text-[#25D366]" />
+          <span>Send WhatsApp Alert</span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function Header({ activeTab, setActiveTab, demoActive, exitDemo, replayDemo, phase, soundMuted, toggleSound }: { activeTab: Tab; setActiveTab: (tab: Tab) => void; demoActive: boolean; exitDemo: () => void; replayDemo: () => void; phase: string; soundMuted: boolean; toggleSound: () => void }) {
   const tabs: { label: Tab; icon: typeof Activity }[] = [{ label: 'Operations', icon: Activity }, { label: 'Controls', icon: SlidersHorizontal }, { label: 'Event Log', icon: GitBranch }, { label: 'History', icon: HistoryIcon }];
   return <header className="topbar">
     <div className="mx-auto flex max-w-[1480px] items-center justify-between gap-5 px-5 py-4 sm:px-8">
@@ -73,6 +117,13 @@ function Header({ activeTab, setActiveTab, demoActive, exitDemo, replayDemo, pha
       </div>
       <div className="flex items-center gap-2">
         <StatusPill tone={phase === 'NORMAL' ? 'good' : phase === 'CRITICAL_RESERVE' ? 'alert' : 'warn'}><span className="h-1.5 w-1.5 rounded-full bg-current" />{phase.replace('_', ' ')}</StatusPill>
+        <button type="button" onClick={toggleSound} className="rounded-lg p-2 text-muted-foreground hover:bg-secondary hover:text-primary" aria-label={soundMuted ? 'Unmute Audio Alarms' : 'Mute Audio Alarms'} data-testid="button-toggle-audio">
+          {soundMuted ? <VolumeX size={17} /> : <Volume2 size={17} className="text-accent" />}
+        </button>
+        <button type="button" onClick={() => playLeakAlert()} className="btn-quiet flex items-center gap-1.5 rounded-lg border border-[#d87563]/30 bg-[#d87563]/10 px-2.5 py-1.5 text-xs font-semibold text-[#93483d] hover:bg-[#d87563]/20" title="Test Maximum Volume Siren Alarm" aria-label="Test Maximum Volume Siren Alarm" data-testid="button-test-audio">
+          <BellRing size={14} className="animate-bounce text-[#d87563]" />
+          <span>Max Siren Test</span>
+        </button>
         <button type="button" onClick={replayDemo} className="btn-quiet flex items-center gap-2 rounded-lg px-2.5 py-2 text-xs font-semibold sm:px-3" aria-label="Replay Demo" data-testid="button-replay-demo"><RotateCcw size={14} /><span className="hidden sm:inline">Replay Demo</span></button>
         <button type="button" onClick={exitDemo} className="rounded-lg p-2 text-muted-foreground hover:bg-secondary hover:text-primary" aria-label="Exit Demo Mode" data-testid="button-exit-demo"><X size={17} /></button>
       </div>
@@ -146,7 +197,7 @@ function FlowReadouts({ flow }: { flow: any }) {
 
 function Valve({ label, state, x, y, bypass = false }: { label: string; state: string; x: number; y: number; bypass?: boolean }) {
   const status = state === 'OPEN' ? 'open' : state === 'CLOSED' ? 'closed' : 'unknown';
-  return <g transform={`translate(${x} ${y})`} data-testid={`valve-${label}`}><rect className={`valve-shape ${status}`} x="-13" y="-13" width="26" height="26" rx="6" transform="rotate(45)" /><path d="M-6 0h12M0-6v12" stroke="#fffaf0" strokeWidth="2" /><text y="31" textAnchor="middle" fontSize="10" fontWeight="700" fill="#31534b">{label}</text><text y="44" textAnchor="middle" fontSize="8.5" fill="#6f8179">{bypass ? 'ACTIVE' : state}</text></g>;
+  return <g transform={`translate(${x} ${y})`} data-testid={`valve-${label}`}><rect className={`valve-shape ${status}`} x="-13" y="-13" width="26" height="26" rx="6" transform="rotate(45)" /><path d="M-6 0h12M0-6v12" stroke="#fffaf0" strokeWidth="2" fill="none" /><text y="31" textAnchor="middle" fontSize="10" fontWeight="700" fill="#31534b">{label}</text><text y="44" textAnchor="middle" fontSize="8.5" fill="#6f8179">{bypass ? 'ACTIVE' : state}</text></g>;
 }
 
 function Schematic({ data }: { data: any }) {
@@ -155,13 +206,13 @@ function Schematic({ data }: { data: any }) {
     <div className="flex items-start justify-between gap-4"><div><div className="eyebrow">Distribution topology</div><h2 className="display-face mt-1 text-2xl font-semibold">Live schematic</h2></div><div className="flex items-center gap-2 text-[11px] text-muted-foreground"><span className="h-2 w-2 rounded-full bg-[#5f9e87]" />Flow path</div></div>
     <div className="mt-5 overflow-x-auto"><svg viewBox="0 0 690 275" className="min-w-[620px] w-full" role="img" aria-label="Source to header, valves and tanks schematic">
       <defs><marker id="arrow" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 z" fill="#5f9e87" /></marker></defs>
-      <path d="M80 115 H205" stroke="#b5c9bd" strokeWidth="5" strokeLinecap="round" markerEnd="url(#arrow)" /><path d="M260 115 H590" stroke="#b5c9bd" strokeWidth="5" strokeLinecap="round" />
-      <path d="M345 115 V210 H530" stroke="#b5c9bd" strokeWidth="5" strokeLinecap="round" markerEnd="url(#arrow)" /><path d="M430 115 V210 H365" stroke="#b5c9bd" strokeWidth="5" strokeLinecap="round" markerEnd="url(#arrow)" />
-      <path d="M205 115 V60 H345 V210" stroke={activeBypass === 'OPEN' ? '#d9a95e' : '#d8d0c3'} strokeWidth={activeBypass === 'OPEN' ? 4 : 3} fill="none" strokeLinecap="round" strokeDasharray={activeBypass === 'OPEN' ? '6 7' : '0'} className={activeBypass === 'OPEN' ? 'bypass-flow' : ''} markerEnd={activeBypass === 'OPEN' ? 'url(#arrow)' : undefined} />
+      <path d="M80 115 H205" stroke="#b5c9bd" strokeWidth="5" strokeLinecap="round" fill="none" markerEnd="url(#arrow)" /><path d="M260 115 H590" stroke="#b5c9bd" strokeWidth="5" strokeLinecap="round" fill="none" />
+      <path d="M345 115 V188" stroke="#b5c9bd" strokeWidth="5" strokeLinecap="round" fill="none" markerEnd="url(#arrow)" /><path d="M430 115 V188" stroke="#b5c9bd" strokeWidth="5" strokeLinecap="round" fill="none" markerEnd="url(#arrow)" /><path d="M515 115 V188" stroke="#b5c9bd" strokeWidth="5" strokeLinecap="round" fill="none" markerEnd="url(#arrow)" />
+      <path d="M205 115 V60 H345 V188" stroke={activeBypass === 'OPEN' ? '#d9a95e' : '#d8d0c3'} strokeWidth={activeBypass === 'OPEN' ? 4 : 3} fill="none" strokeLinecap="round" strokeDasharray={activeBypass === 'OPEN' ? '6 7' : '0'} className={activeBypass === 'OPEN' ? 'bypass-flow' : ''} markerEnd={activeBypass === 'OPEN' ? 'url(#arrow)' : undefined} />
       <circle cx="232" cy="115" r="27" fill="#f3e4ca" stroke="#d9b777" strokeWidth="2" /><path d="M224 121c7-3 8-13 1-17m8 20c7-3 8-13 1-17" fill="none" stroke="#876a36" strokeWidth="2" /><text x="232" y="156" textAnchor="middle" fontSize="10" fontWeight="700" fill="#31534b">HEADER</text>
       <circle cx="46" cy="115" r="29" fill="#dbeadd" stroke="#6f9c87" strokeWidth="2" /><path d="M46 95c-9 12-13 17-13 23a13 13 0 0 0 26 0c0-6-4-11-13-23z" fill="#5f9e87" /><text x="46" y="165" textAnchor="middle" fontSize="10" fontWeight="700" fill="#31534b">SOURCE</text><text x="46" y="178" textAnchor="middle" fontSize="9" fill="#6f8179">{fmt(data.source.level_pct)}%</text>
       <Valve label="SV1" state={data.valves.SV1} x={345} y={115} /><Valve label="SV2" state={data.valves.SV2} x={430} y={115} /><Valve label="SV3" state={data.valves.SV3} x={515} y={115} /><Valve label="BYPASS" state={activeBypass === 'OPEN' ? 'OPEN' : 'CLOSED'} x={345} y={60} bypass={activeBypass === 'OPEN'} />
-      {(['A', 'B', 'C'] as TankKey[]).map((key, index) => { const positions = [{ x: 345, y: 215 }, { x: 430, y: 215 }, { x: 515, y: 215 }][index]; return <g key={key}><rect x={positions.x - 28} y={positions.y - 23} width="56" height="47" rx="11" fill="#edf2ea" stroke="#a6bbae" strokeWidth="2" /><path d={`M${positions.x - 16} ${positions.y + 10}h32`} stroke="#79aa91" strokeWidth="4" strokeLinecap="round" /><text x={positions.x} y={positions.y - 2} textAnchor="middle" fontSize="12" fontWeight="700" fill="#31534b">Tank {key}</text><text x={positions.x} y={positions.y + 17} textAnchor="middle" fontSize="9" fill="#6f8179">{fmt(data.tanks[key].level_pct)}%</text></g>; })}
+      {(['A', 'B', 'C'] as TankKey[]).map((key, index) => { const positions = [{ x: 345, y: 215 }, { x: 430, y: 215 }, { x: 515, y: 215 }][index]; return <g key={key}><rect x={positions.x - 28} y={positions.y - 23} width="56" height="47" rx="11" fill="#edf2ea" stroke="#a6bbae" strokeWidth="2" /><path d={`M${positions.x - 16} ${positions.y + 10}h32`} stroke="#79aa91" strokeWidth="4" strokeLinecap="round" fill="none" /><text x={positions.x} y={positions.y - 2} textAnchor="middle" fontSize="12" fontWeight="700" fill="#31534b">Tank {key}</text><text x={positions.x} y={positions.y + 17} textAnchor="middle" fontSize="9" fill="#6f8179">{fmt(data.tanks[key].level_pct)}%</text></g>; })}
       <text x="325" y="48" fontSize="9" fontWeight="700" fill={activeBypass === 'OPEN' ? '#a67526' : '#9a9081'}>BYPASS → Tank A</text>
     </svg></div>
     <div className="mt-2 flex flex-wrap gap-x-5 gap-y-2 border-t border-border pt-4 text-[11px] text-muted-foreground"><span className="flex items-center gap-2"><i className="h-3 w-3 rotate-45 rounded-[3px] bg-[#5f9e87]" />Open</span><span className="flex items-center gap-2"><i className="h-3 w-3 rotate-45 rounded-[3px] bg-[#d87563]" />Closed</span><span className="flex items-center gap-2"><i className="h-3 w-3 rotate-45 rounded-[3px] border border-dashed border-[#938a7e] bg-[#ddd5c7]" />No signal</span></div>
@@ -187,12 +238,122 @@ function Operations({ data, history, events, waterSaved, freshness, phaseStarted
   </div>;
 }
 
+function WhatsAppSettingsCard() {
+  const [phone, setPhone] = useState(() => getWhatsAppConfig().phone);
+  const [apiKey, setApiKey] = useState(() => getWhatsAppConfig().apiKey);
+  const [webhookUrl, setWebhookUrl] = useState(() => getWhatsAppConfig().webhookUrl);
+  const [webhookToken, setWebhookToken] = useState(() => getWhatsAppConfig().webhookToken);
+  const [autoDispatch, setAutoDispatch] = useState(() => getWhatsAppConfig().autoDispatch);
+  const [autoLaunchWindow, setAutoLaunchWindow] = useState(() => getWhatsAppConfig().autoLaunchWindow);
+  const [testSent, setTestSent] = useState(false);
+
+  const handleSavePhone = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setPhone(e.target.value);
+    setWhatsAppConfig({ phone: e.target.value });
+  };
+
+  const handleSaveApiKey = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setApiKey(e.target.value);
+    setWhatsAppConfig({ apiKey: e.target.value });
+  };
+
+  const handleSaveWebhookUrl = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setWebhookUrl(e.target.value);
+    setWhatsAppConfig({ webhookUrl: e.target.value });
+  };
+
+  const handleSaveWebhookToken = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setWebhookToken(e.target.value);
+    setWhatsAppConfig({ webhookToken: e.target.value });
+  };
+
+  const handleToggleAuto = () => {
+    const next = !autoDispatch;
+    setAutoDispatch(next);
+    setWhatsAppConfig({ autoDispatch: next });
+  };
+
+  const handleToggleLaunch = () => {
+    const next = !autoLaunchWindow;
+    setAutoLaunchWindow(next);
+    setWhatsAppConfig({ autoLaunchWindow: next });
+  };
+
+  const handleTestDispatch = async () => {
+    setTestSent(true);
+    await sendAutomatedWhatsAppAlert({
+      phase: 'TEST_ALERT',
+      message: 'This is a test notification from the Innovexa Reserve Command Center.',
+      priorityTank: 'A',
+    });
+    setTimeout(() => setTestSent(false), 4000);
+  };
+
+  return (
+    <section className="panel rounded-[1.35rem] p-6" data-testid="card-whatsapp-settings">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <div className="eyebrow flex items-center gap-2">
+            <span>Automated Alerts</span>
+          </div>
+          <h2 className="display-face mt-1 text-2xl font-semibold">WhatsApp Dispatcher</h2>
+          <p className="mt-1 text-xs text-muted-foreground">Hands-free background alerts sent to field engineers when anomalies occur.</p>
+        </div>
+        <MessageSquare size={20} className="text-[#25D366]" />
+      </div>
+
+      <div className="mt-5 space-y-4">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="flex items-center justify-between rounded-xl bg-secondary p-3.5">
+            <div>
+              <div className="text-xs font-semibold">Automated WhatsApp Alerts</div>
+              <div className="text-[11px] text-muted-foreground">Auto-triggers telemetry notification when anomaly occurs</div>
+            </div>
+            <button type="button" onClick={handleToggleAuto} className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${autoDispatch ? 'bg-[#25D366]' : 'bg-muted-foreground/30'}`} data-testid="toggle-auto-dispatch">
+              <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${autoDispatch ? 'translate-x-5' : 'translate-x-0'}`} />
+            </button>
+          </div>
+
+          <div className="flex items-center justify-between rounded-xl bg-secondary p-3.5">
+            <div>
+              <div className="text-xs font-semibold">Auto-Open WhatsApp Chat</div>
+              <div className="text-[11px] text-muted-foreground">Launches WhatsApp with pre-filled message ready to send</div>
+            </div>
+            <button type="button" onClick={handleToggleLaunch} className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${autoLaunchWindow ? 'bg-[#25D366]' : 'bg-muted-foreground/30'}`} data-testid="toggle-auto-launch">
+              <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${autoLaunchWindow ? 'translate-x-5' : 'translate-x-0'}`} />
+            </button>
+          </div>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <label className="block text-[11px] font-semibold text-muted-foreground">Engineer WhatsApp Number</label>
+            <input type="text" value={phone} onChange={handleSavePhone} placeholder="+91 6369056400" className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2 text-xs font-medium text-primary placeholder:text-muted-foreground/50" data-testid="input-wa-phone" />
+          </div>
+          <div>
+            <label className="block text-[11px] font-semibold text-muted-foreground">API Token / Webhook URL (Optional)</label>
+            <input type="text" value={apiKey || webhookUrl} onChange={(e) => { handleSaveApiKey(e); handleSaveWebhookUrl(e); }} placeholder="Paste API Key or HTTPS Endpoint" className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2 text-xs font-medium text-primary placeholder:text-muted-foreground/50" data-testid="input-wa-apikey" />
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end pt-1">
+          <button type="button" onClick={handleTestDispatch} className="btn-quiet flex items-center gap-2 rounded-xl border border-[#25D366]/30 bg-[#25D366]/10 px-4 py-2.5 text-xs font-semibold text-[#187c3c] hover:bg-[#25D366]/20" data-testid="button-test-wa-dispatch">
+            <MessageSquare size={14} className="text-[#25D366]" />
+            <span>{testSent ? 'WhatsApp Alert Sent!' : 'Send Test WhatsApp Alert'}</span>
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function Controls({ data, connected, simulateLeakA, simulateLeakB, simulateSourceCritical, resetScenario, updateCommand, resetControls, emergencyStop, resume }: any) {
   const [confirmStop, setConfirmStop] = useState(false);
   const [manualValve, setManualValve] = useState('SV1');
   const disabled = !connected;
   return <div className="space-y-5">
     <div><div className="eyebrow">Controls / intervention desk</div><h1 className="display-face mt-1 text-4xl font-semibold sm:text-5xl">Quiet hands. Clear actions.</h1><p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">Every intervention holds until an operator releases it. Branch leaks never escalate into a critical reserve automatically.</p></div>
+    <WhatsAppSettingsCard />
     <div className="grid gap-5 lg:grid-cols-[1.1fr_.9fr]">
       <section className={`panel rounded-[1.35rem] p-6 ${disabled ? 'disabled-overlay' : ''}`} data-testid="card-demo-scenarios"><div className="flex items-start justify-between"><div><div className="eyebrow">Demo scenarios</div><h2 className="display-face mt-1 text-2xl font-semibold">Practice the response</h2></div><Sparkles size={18} className="text-[#c39a4d]" /></div><div className="mt-5 space-y-3"><button type="button" disabled={disabled} onClick={simulateLeakA} className="btn-quiet flex w-full items-center justify-between rounded-xl p-4 text-left" data-testid="button-simulate-leak-a"><span><span className="block text-sm font-semibold">Simulate Leak — Branch A</span><span className="mt-1 block text-xs text-muted-foreground">Close SV1 · open bypass · hold BYPASS_ACTIVE</span></span><GitBranch size={18} className="text-accent" /></button><button type="button" disabled={disabled} onClick={simulateLeakB} className="btn-quiet flex w-full items-center justify-between rounded-xl p-4 text-left" data-testid="button-simulate-leak-b"><span><span className="block text-sm font-semibold">Simulate Leak — Branch B</span><span className="mt-1 block text-xs text-muted-foreground">Close SV2 · route header around the anomaly</span></span><GitBranch size={18} className="text-accent" /></button><button type="button" disabled={disabled} onClick={simulateSourceCritical} className="flex w-full items-center justify-between rounded-xl border border-[#e4d29d] bg-[#f5ecd4] p-4 text-left text-[#765e24]" data-testid="button-simulate-source-critical"><span><span className="block text-sm font-semibold">Simulate Source Critical</span><span className="mt-1 block text-xs opacity-75">Protect priority tank · enter CRITICAL_RESERVE</span></span><TriangleAlert size={18} /></button><button type="button" disabled={disabled} onClick={resetScenario} className="mt-2 flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-primary" data-testid="button-reset-scenario"><RotateCcw size={14} /> Reset to normal</button></div></section>
       <section className={`panel rounded-[1.35rem] p-6 ${disabled ? 'disabled-overlay' : ''}`} data-testid="card-priority"><div className="eyebrow">Reserve hierarchy</div><h2 className="display-face mt-1 text-2xl font-semibold">Priority tank</h2><p className="mt-3 text-xs leading-5 text-muted-foreground">During source critical, the selected tank rises or holds while non-priority valves close.</p><div className="mt-5 grid grid-cols-3 gap-2">{(['A', 'B', 'C'] as TankKey[]).map((tank) => <button key={tank} type="button" disabled={disabled} onClick={() => updateCommand('priority_tank', tank)} className={`rounded-xl border p-3 text-center transition ${data.commands.priority_tank === tank ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-secondary text-primary'}`} data-testid={`button-priority-tank-${tank}`}><div className="display-face text-2xl">Tank {tank}</div><div className="mt-1 text-[10px] opacity-70">{data.tanks[tank].level_pct.toFixed(1)}%</div></button>)}</div><div className="mt-6 border-t border-border pt-4"><div className="flex items-start justify-between gap-3"><div><div className="text-sm font-semibold">Manual valve override</div><div className="mt-1 text-xs text-muted-foreground">Direct command, distinct from automated phase logic.</div></div><SlidersHorizontal size={17} className="text-[#c39a4d]" /></div><div className="mt-4 grid gap-2 sm:grid-cols-[1fr_auto_auto]"><select value={manualValve} onChange={(event) => setManualValve(event.target.value)} disabled={disabled} className="rounded-xl border border-border bg-card px-3 py-2.5 text-sm text-primary" aria-label="Valve to override" data-testid="select-manual-valve"><option value="SV1">SV1 · Tank A</option><option value="SV2">SV2 · Tank B</option><option value="SV3">SV3 · Tank C</option><option value="bypass_manual">BYPASS · Tank A</option></select><button type="button" disabled={disabled} onClick={() => updateCommand('manual_valve_override', { valveId: manualValve, state: 'OPEN' })} className="btn-quiet rounded-xl px-4 py-2.5 text-xs font-semibold" data-testid="button-open-manual-valve">Open</button><button type="button" disabled={disabled} onClick={() => updateCommand('manual_valve_override', { valveId: manualValve, state: 'CLOSED' })} className="btn-quiet rounded-xl px-4 py-2.5 text-xs font-semibold" data-testid="button-close-manual-valve">Close</button></div><div className="mt-3 text-[11px] text-muted-foreground">{Object.entries(data.commands.manual_valve_override || {}).map(([valve, state]) => `${valve}: ${state}`).join(' · ') || 'No manual overrides issued this session.'}</div></div></section>
@@ -205,7 +366,7 @@ function Controls({ data, connected, simulateLeakA, simulateLeakB, simulateSourc
 function EventLog({ events }: { events: any[] }) {
   const [filter, setFilter] = useState('ALL');
   const filtered = events.filter((event) => filter === 'ALL' || event.type === filter);
-  const exportLog = () => { const csv = ['timestamp,type,message', ...events.map((e) => `${new Date(e.timestamp).toISOString()},${e.type},"${e.message.replaceAll('"', '""')}"`)].join('\\n'); const blob = new Blob([csv], { type: 'text/csv' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = 'aquaguard-event-log.csv'; link.click(); URL.revokeObjectURL(url); };
+  const exportLog = () => { const csv = ['timestamp,type,message', ...events.map((e) => `${new Date(e.timestamp).toISOString()},${e.type},"${e.message.replaceAll('"', '""')}"`)].join('\n'); const blob = new Blob([csv], { type: 'text/csv' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = 'innovexa-event-log.csv'; link.click(); URL.revokeObjectURL(url); };
   return <div className="space-y-5"><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><div className="eyebrow">Event Log / permanent record</div><h1 className="display-face mt-1 text-4xl font-semibold sm:text-5xl">What changed, and when.</h1></div><button type="button" onClick={exportLog} className="btn-quiet flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-xs font-semibold" data-testid="button-export-log"><Download size={15} /> Export CSV</button></div><section className="panel overflow-hidden rounded-[1.35rem]" data-testid="card-event-log"><div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4"><div className="flex gap-1.5">{['ALL', 'SYSTEM', 'ALERT', 'COMMAND', 'EMERGENCY'].map((item) => <button type="button" key={item} onClick={() => setFilter(item)} className={`rounded-full px-3 py-1.5 text-[10px] font-bold tracking-wider ${filter === item ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'}`} data-testid={`filter-events-${item.toLowerCase()}`}>{item}</button>)}</div><span className="text-xs text-muted-foreground">{filtered.length} records · newest first</span></div><div>{filtered.map((event, index) => <div key={`${event.timestamp}-${index}`} className="flex gap-4 border-b border-border px-5 py-5 last:border-0" data-testid={`row-event-${index}`}><div className={`mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${event.type === 'ALERT' || event.type === 'EMERGENCY' ? 'bg-[#f3d4cd] text-[#93483d]' : event.type === 'COMMAND' ? 'bg-[#f1e2bc] text-[#765e24]' : 'bg-secondary text-primary'}`}>{event.type === 'ALERT' || event.type === 'EMERGENCY' ? <AlertTriangle size={15} /> : event.type === 'COMMAND' ? <SlidersHorizontal size={15} /> : <Activity size={15} />}</div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center justify-between gap-2"><span className="text-[10px] font-bold tracking-[.14em] text-muted-foreground">{event.type}</span><span className="text-[11px] text-muted-foreground">{timeAgo(event.timestamp)}</span></div><p className="mt-2 text-sm leading-5 text-primary" data-testid={`text-event-message-${index}`}>{event.message}</p></div></div>)}</div></section></div>;
 }
 
@@ -218,12 +379,47 @@ function History({ history }: { history: any[] }) {
   return <div className="space-y-5"><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><div className="eyebrow">History / reserve levels</div><h1 className="display-face mt-1 text-4xl font-semibold sm:text-5xl">The shape of the reserve.</h1><p className="mt-3 text-sm text-muted-foreground">Rolling telemetry with phase transitions kept in view.</p></div><div className="flex gap-1 rounded-xl bg-secondary p-1">{['Recent', 'Session'].map((item) => <button type="button" key={item} onClick={() => setRange(item)} className={`rounded-lg px-3 py-2 text-xs font-semibold ${range === item ? 'bg-card text-primary shadow-sm' : 'text-muted-foreground'}`} data-testid={`button-history-${item.toLowerCase()}`}>{item}</button>)}</div></div><section className="panel rounded-[1.35rem] p-5 sm:p-7" data-testid="card-history-chart"><div className="flex flex-wrap items-center justify-between gap-3"><div><div className="eyebrow">Tank level percentage</div><div className="mt-2 flex flex-wrap gap-4 text-xs font-semibold"><span className="flex items-center gap-2"><i className="h-2 w-5 rounded-full bg-primary" />Tank A</span><span className="flex items-center gap-2"><i className="h-2 w-5 rounded-full bg-[#c39a4d]" />Tank B</span><span className="flex items-center gap-2"><i className="h-2 w-5 rounded-full bg-accent" />Tank C</span></div></div><span className="text-xs text-muted-foreground">{points.length} readings · {range.toLowerCase()}</span></div><div className="mt-7 overflow-x-auto"><svg viewBox={`0 0 ${width} ${height}`} className="min-w-[700px] w-full"><defs><linearGradient id="areaFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#5f9e87" stopOpacity=".2" /><stop offset="1" stopColor="#5f9e87" stopOpacity="0" /></linearGradient></defs>{[20, 40, 60, 80].map((line) => <g key={line}><line x1={pad} x2={width - pad} y1={y(line)} y2={y(line)} className="chart-grid" /><text x="0" y={y(line) + 4} fontSize="10" fill="#7b8981">{line}%</text></g>)}{markers.map((marker, i) => <g key={i}><line x1={marker.x} x2={marker.x} y1={pad} y2={height - pad} stroke="#d9b777" strokeDasharray="4 4" /><text x={marker.x + 5} y={pad + 10} fontSize="9" fill="#9b7835">{marker.label}</text></g>)}<path d={`${pathFor('A')} L ${x(points.length - 1)} ${height - pad} L ${pad} ${height - pad} Z`} className="chart-area" /><path d={pathFor('A')} className="chart-line" /><path d={pathFor('B')} fill="none" stroke="#c39a4d" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /><path d={pathFor('C')} fill="none" stroke="#d87563" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg></div></section><div className="grid gap-5 md:grid-cols-3">{(['A', 'B', 'C'] as TankKey[]).map((tank) => <div key={tank} className="panel rounded-[1.15rem] p-5" data-testid={`history-summary-${tank}`}><div className="eyebrow">Tank {tank} average</div><div className="metric-value mt-3 text-4xl text-primary">{fmt(points.reduce((sum, point) => sum + point[tank], 0) / points.length)}%</div><div className="mt-2 text-xs text-muted-foreground">Rolling session view</div></div>)}</div></div>;
 }
 
+function WAToast() {
+  const [toast, setToast] = useState<{ phone: string; message: string; timestamp: number } | null>(null);
+
+  useEffect(() => {
+    const handleDispatched = (e: any) => {
+      if (e.detail) {
+        setToast({
+          phone: e.detail.phone,
+          message: e.detail.message,
+          timestamp: e.detail.timestamp,
+        });
+      }
+    };
+    window.addEventListener('innovexa_wa_dispatched', handleDispatched);
+    return () => window.removeEventListener('innovexa_wa_dispatched', handleDispatched);
+  }, []);
+
+  if (!toast) return null;
+
+  return (
+    <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-2xl border border-[#25D366]/40 bg-card p-4 shadow-2xl animate-in fade-in slide-in-from-bottom-5" data-testid="toast-whatsapp-dispatched">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#25D366]/15 text-[#25D366]">
+        <MessageSquare size={20} />
+      </div>
+      <div>
+        <div className="text-xs font-semibold text-primary">📲 WhatsApp Alert Dispatched!</div>
+        <div className="text-[11px] text-muted-foreground">Sent to <strong className="text-primary">{toast.phone}</strong> via 256-Bit SSL HTTPS Webhook</div>
+      </div>
+      <button type="button" onClick={() => setToast(null)} className="ml-2 text-muted-foreground hover:text-primary">
+        <X size={15} />
+      </button>
+    </div>
+  );
+}
+
 function Dashboard() {
-  const aqua = useAquaGuard();
+  const aqua = useInnovexa();
   const [tab, setTab] = useState<Tab>('Operations');
   if (!aqua.demoActive && !aqua.isConnected) return <EntryState runDemo={aqua.runDemo} isLoading={aqua.isLiveLoading} />;
    const page = tab === 'Operations' ? <Operations {...aqua} /> : tab === 'Controls' ? <Controls data={aqua.data} connected={aqua.isConnected} simulateLeakA={aqua.simulateLeakA} simulateLeakB={aqua.simulateLeakB} simulateSourceCritical={aqua.simulateSourceCritical} resetScenario={aqua.resetScenario} updateCommand={aqua.updateCommand} resetControls={aqua.resetControls} emergencyStop={aqua.emergencyStop} resume={aqua.resume} /> : tab === 'Event Log' ? <EventLog events={aqua.events} /> : <History history={aqua.history} />;
-  return <div className="app-shell"><Header activeTab={tab} setActiveTab={setTab} demoActive={aqua.demoActive} exitDemo={aqua.exitDemo} replayDemo={aqua.replayDemo} phase={aqua.data.system.phase} /><main className="mx-auto max-w-[1480px] px-5 py-7 sm:px-8 sm:py-10"><div className="mb-6 flex items-center justify-between">{aqua.demoActive ? <div className="flex items-center gap-2 rounded-full border border-[#e4d29d] bg-[#f5ecd4] px-3 py-1.5 text-[10px] font-bold tracking-[.14em] text-[#765e24]" data-testid="badge-demo-mode"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#c39a4d]" />DEMO MODE — SIMULATED DATA</div> : <div className="flex items-center gap-2 rounded-full border border-[#c4ddcd] bg-[#e3f0e5] px-3 py-1.5 text-[10px] font-bold tracking-[.14em] text-[#25614d]" data-testid="badge-live-mode"><span className="h-1.5 w-1.5 rounded-full bg-[#5f9e87]" />LIVE FIREBASE TELEMETRY</div>}<div className="hidden items-center gap-2 text-xs text-muted-foreground sm:flex"><LockKeyhole size={13} />ESP32 / local station 01</div></div>{page}</main><footer className="mx-auto flex max-w-[1480px] flex-col gap-2 border-t border-border px-5 py-6 text-[11px] text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-8"><span>Hardware under assembly · Live Firebase telemetry will replace simulation when configured.</span><span className="flex items-center gap-2"><Check size={13} className="text-[#5f9e87]" />Guardrails active</span></footer></div>;
+  return <div className="app-shell"><Header activeTab={tab} setActiveTab={setTab} demoActive={aqua.demoActive} exitDemo={aqua.exitDemo} replayDemo={aqua.replayDemo} phase={aqua.data.system.phase} soundMuted={aqua.soundMuted} toggleSound={aqua.toggleSound} /><main className="mx-auto max-w-[1480px] px-5 py-7 sm:px-8 sm:py-10"><div className="mb-6 flex items-center justify-between">{aqua.demoActive ? <div className="flex items-center gap-2 rounded-full border border-[#e4d29d] bg-[#f5ecd4] px-3 py-1.5 text-[10px] font-bold tracking-[.14em] text-[#765e24]" data-testid="badge-demo-mode"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#c39a4d]" />DEMO MODE — SIMULATED DATA</div> : <div className="flex items-center gap-2 rounded-full border border-[#c4ddcd] bg-[#e3f0e5] px-3 py-1.5 text-[10px] font-bold tracking-[.14em] text-[#25614d]" data-testid="badge-live-mode"><span className="h-1.5 w-1.5 rounded-full bg-[#5f9e87]" />LIVE FIREBASE TELEMETRY</div>}<div className="hidden items-center gap-2 text-xs text-muted-foreground sm:flex"><LockKeyhole size={13} />ESP32 / local station 01</div></div><AlertBanner aqua={aqua} />{page}</main><footer className="mx-auto flex max-w-[1480px] flex-col gap-2 border-t border-border px-5 py-6 text-[11px] text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-8"><span>Hardware under assembly · Live Firebase telemetry will replace simulation when configured.</span><span className="flex items-center gap-2"><Check size={13} className="text-[#5f9e87]" />Guardrails active</span></footer><WAToast /></div>;
 }
 
 export default function App() {

@@ -1,4 +1,4 @@
+import { useInnovexa } from './useInnovexa';
 declare function useAquaGuard(): any;
-
-export { useAquaGuard };
+export { useAquaGuard, useInnovexa };
 export default useAquaGuard;
