@@ -199,7 +199,7 @@ export function setWhatsAppConfig(config: Partial<WhatsAppConfig>) {
 }
 
 export function generateWhatsAppUrl(payload: WhatsAppAlertPayload, phoneNumber = ''): string {
-  const station = payload.stationId || 'Hardware Assembly 01';
+  const station = payload.stationId || 'Innovexa Smart Node 01';
   const phaseTitle = payload.phase.replace('_', ' ');
   const timeStr = new Date().toLocaleTimeString();
 
@@ -214,7 +214,7 @@ export async function sendAutomatedWhatsAppAlert(payload: WhatsAppAlertPayload):
   const config = getWhatsAppConfig();
   if (!config.autoDispatch) return { success: false, mode: 'disabled' };
 
-  const station = payload.stationId || 'Hardware Assembly 01';
+  const station = payload.stationId || 'Innovexa Smart Node 01';
   const phaseTitle = payload.phase.replace('_', ' ');
   const timeStr = new Date().toLocaleTimeString();
 
