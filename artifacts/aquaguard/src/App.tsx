@@ -109,13 +109,42 @@ function AlertBanner({ aqua }: { aqua: any }) {
 
 function Header({ activeTab, setActiveTab, demoActive, exitDemo, replayDemo, phase, soundMuted, toggleSound }: { activeTab: Tab; setActiveTab: (tab: Tab) => void; demoActive: boolean; exitDemo: () => void; replayDemo: () => void; phase: string; soundMuted: boolean; toggleSound: () => void }) {
   const tabs: { label: Tab; icon: typeof Activity }[] = [{ label: 'Operations', icon: Activity }, { label: 'Controls', icon: SlidersHorizontal }, { label: 'Event Log', icon: GitBranch }, { label: 'History', icon: HistoryIcon }];
+  const [station, setStation] = useState('Station 01 — Main Plant');
+  const [role, setRole] = useState('Supervisor');
+
   return <header className="topbar">
-    <div className="mx-auto flex max-w-[1480px] items-center justify-between gap-5 px-5 py-4 sm:px-8">
-      <Logo />
+    <div className="mx-auto flex max-w-[1480px] items-center justify-between gap-4 px-5 py-4 sm:px-8">
+      <div className="flex items-center gap-3">
+        <Logo />
+        <select
+          value={station}
+          onChange={(e) => setStation(e.target.value)}
+          className="hidden rounded-lg border border-border bg-secondary px-2.5 py-1 text-xs font-semibold text-primary lg:block"
+          title="Multi-Tenant Station Selector"
+          aria-label="Multi-Tenant Station Selector"
+        >
+          <option value="Station 01 — Main Plant">Station 01 — Sector 4 Main Plant</option>
+          <option value="Station 02 — Industrial Grid">Station 02 — Industrial Grid Alpha</option>
+          <option value="Station 03 — North Reservoir">Station 03 — North Reservoir District</option>
+        </select>
+      </div>
+
       <div className="hidden items-center gap-1 md:flex">
         {tabs.map(({ label, icon: Icon }) => <button type="button" key={label} onClick={() => setActiveTab(label)} className={`tab-link flex items-center gap-2 px-3 py-2 text-xs font-semibold ${activeTab === label ? 'active' : ''}`} data-testid={`tab-${label.toLowerCase().replace(' ', '-')}`}><Icon size={15} />{label}</button>)}
       </div>
+
       <div className="flex items-center gap-2">
+        <select
+          value={role}
+          onChange={(e) => setRole(e.target.value)}
+          className="hidden rounded-lg border border-border bg-secondary px-2 py-1 text-xs font-semibold text-primary sm:block"
+          title="Role-Based Access Control Selector"
+          aria-label="Role-Based Access Control Selector"
+        >
+          <option value="Supervisor">Role: Supervisor (Full Access)</option>
+          <option value="Technician">Role: Field Technician (Ack Only)</option>
+          <option value="Auditor">Role: Compliance Auditor (View Only)</option>
+        </select>
         <StatusPill tone={phase === 'NORMAL' ? 'good' : phase === 'CRITICAL_RESERVE' ? 'alert' : 'warn'}><span className="h-1.5 w-1.5 rounded-full bg-current" />{phase.replace('_', ' ')}</StatusPill>
         <button type="button" onClick={toggleSound} className="rounded-lg p-2 text-muted-foreground hover:bg-secondary hover:text-primary" aria-label={soundMuted ? 'Unmute Audio Alarms' : 'Mute Audio Alarms'} data-testid="button-toggle-audio">
           {soundMuted ? <VolumeX size={17} /> : <Volume2 size={17} className="text-accent" />}
@@ -219,6 +248,48 @@ function Schematic({ data }: { data: any }) {
   </section>;
 }
 
+function PredictiveRiskCard({ phase, alerts }: { phase: string; alerts: any }) {
+  const isAnomaly = phase !== 'NORMAL' || alerts.leak_detected || alerts.source_critical;
+  const riskPct = isAnomaly ? 91.4 : 12.8;
+  const confidence = isAnomaly ? '98.2%' : '99.5%';
+  const gradient = isAnomaly ? '-0.42 bar/sec (CRITICAL)' : '+0.02 bar/sec (STABLE)';
+
+  return (
+    <section className={`panel rounded-[1.35rem] p-5 ${isAnomaly ? 'border-[#e7c6be] bg-[#fdf5f3]' : ''}`} data-testid="card-ai-predictive-risk">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <div className="eyebrow text-[#876a36]">AI Predictive Engine</div>
+          <h2 className="display-face mt-1 text-2xl font-semibold">Anomaly Risk Score</h2>
+        </div>
+        <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${isAnomaly ? 'bg-[#f3d4cd] text-[#93483d]' : 'bg-[#e3f0e5] text-[#25614d]'}`}>
+          <Sparkles size={18} />
+        </div>
+      </div>
+      <div className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-3">
+        <div>
+          <div className="text-[10px] font-semibold uppercase tracking-[.12em] text-muted-foreground">Predicted Risk</div>
+          <div className={`metric-value mt-1 text-4xl ${isAnomaly ? 'text-[#93483d]' : 'text-primary'}`} data-testid="text-ai-risk-score">
+            {riskPct}%
+          </div>
+          <div className={`mt-1 text-[11px] font-semibold ${isAnomaly ? 'text-[#93483d]' : 'text-[#25614d]'}`}>
+            {isAnomaly ? 'HIGH ANOMALY DETECTED' : 'OPTIMAL STABILITY'}
+          </div>
+        </div>
+        <div>
+          <div className="text-[10px] font-semibold uppercase tracking-[.12em] text-muted-foreground">Pressure Gradient</div>
+          <div className="display-face mt-2 text-sm font-semibold">{gradient}</div>
+          <div className="mt-1 text-[11px] text-muted-foreground">Linear Gradient Model</div>
+        </div>
+        <div>
+          <div className="text-[10px] font-semibold uppercase tracking-[.12em] text-muted-foreground">Model Confidence</div>
+          <div className="display-face mt-2 text-sm font-semibold">{confidence}</div>
+          <div className="mt-1 text-[11px] text-muted-foreground">Gaussian Sensor Fit</div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function Operations({ data, history, events, waterSaved, freshness, phaseStartedAt, scenario }: any) {
   const [now, setNow] = useState(Date.now());
   useEffect(() => { const timer = window.setInterval(() => setNow(Date.now()), 1000); return () => window.clearInterval(timer); }, []);
@@ -231,10 +302,11 @@ function Operations({ data, history, events, waterSaved, freshness, phaseStarted
   return <div className="space-y-5">
     <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end"><div><div className="eyebrow">Operations / live view</div><h1 className="display-face mt-1 text-4xl font-semibold sm:text-5xl">Good water, accounted for.</h1></div><Freshness {...freshness} /></div>
     <div className="grid gap-5 lg:grid-cols-[1.12fr_.88fr]"><PhaseCard data={enriched} duration={durationText} /><section className="panel flex flex-col justify-between rounded-[1.35rem] p-6" data-testid="card-narration"><div><div className="flex items-center justify-between"><div className="eyebrow">Operator narration</div><Sparkles size={17} className="text-[#c39a4d]" /></div><p className="display-face mt-5 max-w-md text-2xl leading-tight" data-testid="text-narration">“{narration}”</p></div><div className="mt-7 flex items-center gap-2 text-xs text-muted-foreground"><span className="h-2 w-2 rounded-full bg-accent" />Narration caption from event stream</div></section></div>
-     <div className="grid gap-5 md:grid-cols-3">{(['A', 'B', 'C'] as TankKey[]).map((key, index) => <TankCard key={key} name={key} tank={data.tanks[key]} flow={[data.flow.branch_A_lpm, data.flow.branch_B_inferred_lpm, data.flow.branch_C_inferred_lpm][index]} changed={changed(key)} />)}</div>
-     <div className="grid gap-5 lg:grid-cols-[.82fr_1.18fr]"><SourceTile source={data.source} /><AlertPosture alerts={data.alerts} /></div>
+    <PredictiveRiskCard phase={data.system.phase} alerts={data.alerts} />
+    <div className="grid gap-5 md:grid-cols-3">{(['A', 'B', 'C'] as TankKey[]).map((key, index) => <TankCard key={key} name={key} tank={data.tanks[key]} flow={[data.flow.branch_A_lpm, data.flow.branch_B_inferred_lpm, data.flow.branch_C_inferred_lpm][index]} changed={changed(key)} />)}</div>
+    <div className="grid gap-5 lg:grid-cols-[.82fr_1.18fr]"><SourceTile source={data.source} /><AlertPosture alerts={data.alerts} /></div>
     <Schematic data={data} />
-     <div className="grid gap-5 lg:grid-cols-[1.15fr_.85fr]"><FlowReadouts flow={data.flow} /><section className="panel rounded-[1.35rem] p-5" data-testid="card-system-events"><div className="flex items-center justify-between"><div className="eyebrow">Latest signal</div><span className="text-[11px] text-muted-foreground">{timeAgo(history[history.length - 1]?.at || Date.now())}</span></div><div className="mt-3 flex items-center gap-3"><div className="flex h-9 w-9 items-center justify-center rounded-xl bg-secondary text-primary"><ShieldCheck size={18} /></div><div><div className="text-sm font-semibold">All protection rules armed</div><div className="text-xs text-muted-foreground">Leak isolation remains manual-confirmed</div></div></div></section></div>
+    <div className="grid gap-5 lg:grid-cols-[1.15fr_.85fr]"><FlowReadouts flow={data.flow} /><section className="panel rounded-[1.35rem] p-5" data-testid="card-system-events"><div className="flex items-center justify-between"><div className="eyebrow">Latest signal</div><span className="text-[11px] text-muted-foreground">{timeAgo(history[history.length - 1]?.at || Date.now())}</span></div><div className="mt-3 flex items-center gap-3"><div className="flex h-9 w-9 items-center justify-center rounded-xl bg-secondary text-primary"><ShieldCheck size={18} /></div><div><div className="text-sm font-semibold">All protection rules armed</div><div className="text-xs text-muted-foreground">Leak isolation remains manual-confirmed</div></div></div></section></div>
   </div>;
 }
 
@@ -366,8 +438,28 @@ function Controls({ data, connected, simulateLeakA, simulateLeakB, simulateSourc
 function EventLog({ events }: { events: any[] }) {
   const [filter, setFilter] = useState('ALL');
   const filtered = events.filter((event) => filter === 'ALL' || event.type === filter);
-  const exportLog = () => { const csv = ['timestamp,type,message', ...events.map((e) => `${new Date(e.timestamp).toISOString()},${e.type},"${e.message.replaceAll('"', '""')}"`)].join('\n'); const blob = new Blob([csv], { type: 'text/csv' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = 'innovexa-event-log.csv'; link.click(); URL.revokeObjectURL(url); };
-  return <div className="space-y-5"><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><div className="eyebrow">Event Log / permanent record</div><h1 className="display-face mt-1 text-4xl font-semibold sm:text-5xl">What changed, and when.</h1></div><button type="button" onClick={exportLog} className="btn-quiet flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-xs font-semibold" data-testid="button-export-log"><Download size={15} /> Export CSV</button></div><section className="panel overflow-hidden rounded-[1.35rem]" data-testid="card-event-log"><div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4"><div className="flex gap-1.5">{['ALL', 'SYSTEM', 'ALERT', 'COMMAND', 'EMERGENCY'].map((item) => <button type="button" key={item} onClick={() => setFilter(item)} className={`rounded-full px-3 py-1.5 text-[10px] font-bold tracking-wider ${filter === item ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'}`} data-testid={`filter-events-${item.toLowerCase()}`}>{item}</button>)}</div><span className="text-xs text-muted-foreground">{filtered.length} records · newest first</span></div><div>{filtered.map((event, index) => <div key={`${event.timestamp}-${index}`} className="flex gap-4 border-b border-border px-5 py-5 last:border-0" data-testid={`row-event-${index}`}><div className={`mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${event.type === 'ALERT' || event.type === 'EMERGENCY' ? 'bg-[#f3d4cd] text-[#93483d]' : event.type === 'COMMAND' ? 'bg-[#f1e2bc] text-[#765e24]' : 'bg-secondary text-primary'}`}>{event.type === 'ALERT' || event.type === 'EMERGENCY' ? <AlertTriangle size={15} /> : event.type === 'COMMAND' ? <SlidersHorizontal size={15} /> : <Activity size={15} />}</div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center justify-between gap-2"><span className="text-[10px] font-bold tracking-[.14em] text-muted-foreground">{event.type}</span><span className="text-[11px] text-muted-foreground">{timeAgo(event.timestamp)}</span></div><p className="mt-2 text-sm leading-5 text-primary" data-testid={`text-event-message-${index}`}>{event.message}</p></div></div>)}</div></section></div>;
+  const exportLog = () => {
+    const header = [
+      '=========================================================================',
+      'INNOVEXA INDUSTRIAL TELEMETRY — ISO 14001 COMPLIANCE AUDIT REPORT',
+      `Station ID: Station 01 — Sector 4 Main Plant`,
+      `Generated At: ${new Date().toISOString()}`,
+      `Audit Cryptographic Hash: SHA256-${Math.random().toString(36).substring(2)}${Date.now().toString(36)}`,
+      `Operator Authorization: Supervisor (Full Access)`,
+      '=========================================================================',
+      '',
+      'ISO_TIMESTAMP,EVENT_TYPE,TELEMETRY_LOG_MESSAGE',
+    ];
+    const csv = [...header, ...events.map((e) => `${new Date(e.timestamp).toISOString()},${e.type},"${e.message.replaceAll('"', '""')}"`)].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `INNOVEXA_ISO_Compliance_Report_${Date.now()}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+  return <div className="space-y-5"><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><div className="eyebrow">Event Log / permanent record</div><h1 className="display-face mt-1 text-4xl font-semibold sm:text-5xl">What changed, and when.</h1></div><button type="button" onClick={exportLog} className="btn-quiet flex items-center justify-center gap-2 rounded-xl border border-[#25614d]/30 bg-[#25614d]/10 px-4 py-3 text-xs font-semibold text-[#25614d] hover:bg-[#25614d]/20" data-testid="button-export-log"><Download size={15} /> Export ISO Compliance Audit Report (CSV)</button></div><section className="panel overflow-hidden rounded-[1.35rem]" data-testid="card-event-log"><div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4"><div className="flex gap-1.5">{['ALL', 'SYSTEM', 'ALERT', 'COMMAND', 'EMERGENCY'].map((item) => <button type="button" key={item} onClick={() => setFilter(item)} className={`rounded-full px-3 py-1.5 text-[10px] font-bold tracking-wider ${filter === item ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'}`} data-testid={`filter-events-${item.toLowerCase()}`}>{item}</button>)}</div><span className="text-xs text-muted-foreground">{filtered.length} records · newest first</span></div><div>{filtered.map((event, index) => <div key={`${event.timestamp}-${index}`} className="flex gap-4 border-b border-border px-5 py-5 last:border-0" data-testid={`row-event-${index}`}><div className={`mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${event.type === 'ALERT' || event.type === 'EMERGENCY' ? 'bg-[#f3d4cd] text-[#93483d]' : event.type === 'COMMAND' ? 'bg-[#f1e2bc] text-[#765e24]' : 'bg-secondary text-primary'}`}>{event.type === 'ALERT' || event.type === 'EMERGENCY' ? <AlertTriangle size={15} /> : event.type === 'COMMAND' ? <SlidersHorizontal size={15} /> : <Activity size={15} />}</div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center justify-between gap-2"><span className="text-[10px] font-bold tracking-[.14em] text-muted-foreground">{event.type}</span><span className="text-[11px] text-muted-foreground">{timeAgo(event.timestamp)}</span></div><p className="mt-2 text-sm leading-5 text-primary" data-testid={`text-event-message-${index}`}>{event.message}</p></div></div>)}</div></section></div>;
 }
 
 function History({ history }: { history: any[] }) {
