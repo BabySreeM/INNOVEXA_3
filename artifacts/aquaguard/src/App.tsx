@@ -550,10 +550,10 @@ function WAToast() {
 }
 
 function Dashboard() {
-  const aqua = useInnovexa();
   const [tab, setTab] = useState<Tab>('Operations');
   const [userRole, setUserRole] = useState<string>('Supervisor');
   const [station, setStation] = useState<string>('Station 01 — Sector 4 Main Plant');
+  const aqua = (useInnovexa as any)({ stationId: station, role: userRole });
 
   useEffect(() => {
     if (typeof window !== 'undefined') {

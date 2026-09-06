@@ -61,7 +61,7 @@ const firebaseApp = firebaseDatabaseUrl && firebaseApiKey && firebaseProjectId &
   : null;
 const firebaseDatabase = firebaseApp && firebaseDatabaseUrl ? getDatabase(firebaseApp, firebaseDatabaseUrl) : null;
 
-export function useInnovexa() {
+export function useInnovexa(opts = {}) {
   const liveUrl = firebaseDatabaseUrl;
   const [demoActive, setDemoActive] = useState(false);
   const [scenario, setScenario] = useState('NORMAL');
@@ -77,6 +77,10 @@ export function useInnovexa() {
   const toggleSound = useCallback(() => setSoundMuted(toggleAudioMuted()), []);
   const scenarioRef = useRef(scenario);
   scenarioRef.current = scenario;
+  const stationRef = useRef(opts?.stationId);
+  stationRef.current = opts?.stationId;
+  const roleRef = useRef(opts?.role);
+  roleRef.current = opts?.role;
 
   useEffect(() => {
     const timer = window.setInterval(() => setClock(Date.now()), 1000);
@@ -138,10 +142,10 @@ export function useInnovexa() {
     addEvent(target === 'NORMAL' ? 'SYSTEM' : 'ALERT', message);
     if (target === 'BRANCH_A' || target === 'BRANCH_B') {
       playLeakAlert();
-      sendAutomatedWhatsAppAlert({ phase: target, message, priorityTank: currentPriority });
+      sendAutomatedWhatsAppAlert({ phase: target, stationId: stationRef.current, role: roleRef.current, message, priorityTank: currentPriority });
     } else if (target === 'SOURCE_CRITICAL') {
       playCriticalReserveAlert();
-      sendAutomatedWhatsAppAlert({ phase: 'CRITICAL_RESERVE', message, priorityTank: currentPriority });
+      sendAutomatedWhatsAppAlert({ phase: 'CRITICAL_RESERVE', stationId: stationRef.current, role: roleRef.current, message, priorityTank: currentPriority });
     }
   }, [addEvent, data.commands?.priority_tank]);
 
@@ -242,7 +246,7 @@ export function useInnovexa() {
     }
     addEvent('EMERGENCY', 'Emergency Stop engaged. All valves closed and pump halted for system safety.');
     playEmergencyStopAlert();
-    sendAutomatedWhatsAppAlert({ phase: 'EMERGENCY_STOP', message: 'Emergency Stop engaged. All valves closed and pump halted for system safety.' });
+    sendAutomatedWhatsAppAlert({ phase: 'EMERGENCY_STOP', stationId: stationRef.current, role: roleRef.current, message: 'Emergency Stop engaged. All valves closed and pump halted for system safety.' });
   }, [addEvent, demoActive]);
 
   const resume = useCallback(() => {
