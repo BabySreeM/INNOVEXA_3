@@ -165,12 +165,14 @@ export interface WhatsAppConfig {
 
 const DEFAULT_PHONE = '+91 6369056400';
 
+const DEFAULT_WEBHOOK_URL = 'https://aquaguard-dashboard.onrender.com/send-alert';
+
 export function getWhatsAppConfig(): WhatsAppConfig {
   if (typeof localStorage === 'undefined') {
     return {
       phone: DEFAULT_PHONE,
       apiKey: '',
-      webhookUrl: '',
+      webhookUrl: DEFAULT_WEBHOOK_URL,
       webhookToken: '',
       autoDispatch: true,
       autoLaunchWindow: true,
@@ -179,7 +181,7 @@ export function getWhatsAppConfig(): WhatsAppConfig {
   return {
     phone: localStorage.getItem('innovexa_wa_phone') || DEFAULT_PHONE,
     apiKey: localStorage.getItem('innovexa_wa_apikey') || '',
-    webhookUrl: localStorage.getItem('innovexa_wa_webhook') || '',
+    webhookUrl: localStorage.getItem('innovexa_wa_webhook') || DEFAULT_WEBHOOK_URL,
     webhookToken: localStorage.getItem('innovexa_wa_token') || '',
     autoDispatch: localStorage.getItem('innovexa_wa_autodispatch') !== 'false',
     autoLaunchWindow: localStorage.getItem('innovexa_wa_autolaunch') !== 'false',
