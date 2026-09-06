@@ -64,7 +64,7 @@ function StatusPill({ children, tone = 'neutral' }: { children: React.ReactNode;
   return <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold ${tone === 'good' ? 'bg-[#dbeadd] text-[#25614d]' : tone === 'warn' ? 'bg-[#f1e2bc] text-[#765e24]' : tone === 'alert' ? 'bg-[#f3d4cd] text-[#93483d]' : 'bg-secondary text-muted-foreground'}`} data-testid="status-pill">{children}</span>;
 }
 
-function AlertBanner({ aqua }: { aqua: any }) {
+function AlertBanner({ aqua, station, role }: { aqua: any; station: string; role: string }) {
   const isAlert = aqua.data.alerts.leak_detected || aqua.data.alerts.source_critical || aqua.data.commands.estop_triggered;
   if (!isAlert) return null;
 
@@ -75,6 +75,8 @@ function AlertBanner({ aqua }: { aqua: any }) {
   const handleWhatsApp = () => {
     const url = generateWhatsAppUrl({
       phase: isEstop ? 'EMERGENCY_STOP' : phase,
+      stationId: station,
+      role: role,
       message: latestMessage,
       waterSaved: aqua.waterSaved,
       priorityTank: aqua.data.commands?.priority_tank,
@@ -107,9 +109,8 @@ function AlertBanner({ aqua }: { aqua: any }) {
   );
 }
 
-function Header({ activeTab, setActiveTab, demoActive, exitDemo, replayDemo, phase, soundMuted, toggleSound, role, setRole }: { activeTab: Tab; setActiveTab: (tab: Tab) => void; demoActive: boolean; exitDemo: () => void; replayDemo: () => void; phase: string; soundMuted: boolean; toggleSound: () => void; role: string; setRole: (role: string) => void }) {
+function Header({ activeTab, setActiveTab, demoActive, exitDemo, replayDemo, phase, soundMuted, toggleSound, role, setRole, station, setStation }: { activeTab: Tab; setActiveTab: (tab: Tab) => void; demoActive: boolean; exitDemo: () => void; replayDemo: () => void; phase: string; soundMuted: boolean; toggleSound: () => void; role: string; setRole: (role: string) => void; station: string; setStation: (station: string) => void }) {
   const tabs: { label: Tab; icon: typeof Activity }[] = [{ label: 'Operations', icon: Activity }, { label: 'Controls', icon: SlidersHorizontal }, { label: 'Event Log', icon: GitBranch }, { label: 'History', icon: HistoryIcon }];
-  const [station, setStation] = useState('Station 01 — Main Plant');
 
   return <header className="topbar">
     <div className="mx-auto flex max-w-[1480px] items-center justify-between gap-4 px-5 py-4 sm:px-8">
@@ -122,9 +123,9 @@ function Header({ activeTab, setActiveTab, demoActive, exitDemo, replayDemo, pha
           title="Multi-Tenant Station Selector"
           aria-label="Multi-Tenant Station Selector"
         >
-          <option value="Station 01 — Main Plant">Station 01 — Sector 4 Main Plant</option>
-          <option value="Station 02 — Industrial Grid">Station 02 — Industrial Grid Alpha</option>
-          <option value="Station 03 — North Reservoir">Station 03 — North Reservoir District</option>
+          <option value="Station 01 — Sector 4 Main Plant">Station 01 — Sector 4 Main Plant</option>
+          <option value="Station 02 — Sector 2 Industrial Grid Alpha">Station 02 — Sector 2 Industrial Grid Alpha</option>
+          <option value="Station 03 — Sector 3 North Reservoir District">Station 03 — Sector 3 North Reservoir District</option>
         </select>
       </div>
 
@@ -552,6 +553,7 @@ function Dashboard() {
   const aqua = useInnovexa();
   const [tab, setTab] = useState<Tab>('Operations');
   const [userRole, setUserRole] = useState<string>('Supervisor');
+  const [station, setStation] = useState<string>('Station 01 — Sector 4 Main Plant');
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -572,7 +574,7 @@ function Dashboard() {
 
   if (!aqua.demoActive && !aqua.isConnected) return <EntryState runDemo={aqua.runDemo} isLoading={aqua.isLiveLoading} />;
   const page = tab === 'Operations' ? <Operations {...aqua} /> : tab === 'Controls' ? <Controls data={aqua.data} connected={aqua.isConnected} simulateLeakA={aqua.simulateLeakA} simulateLeakB={aqua.simulateLeakB} simulateSourceCritical={aqua.simulateSourceCritical} resetScenario={aqua.resetScenario} updateCommand={aqua.updateCommand} resetControls={aqua.resetControls} emergencyStop={aqua.emergencyStop} resume={aqua.resume} role={userRole} /> : tab === 'Event Log' ? <EventLog events={aqua.events} /> : <History history={aqua.history} />;
-  return <div className="app-shell"><Header activeTab={tab} setActiveTab={setTab} demoActive={aqua.demoActive} exitDemo={aqua.exitDemo} replayDemo={aqua.replayDemo} phase={aqua.data.system.phase} soundMuted={aqua.soundMuted} toggleSound={aqua.toggleSound} role={userRole} setRole={setUserRole} /><main className="mx-auto max-w-[1480px] px-5 py-7 sm:px-8 sm:py-10"><div className="mb-6 flex items-center justify-between">{aqua.demoActive ? <div className="flex items-center gap-2 rounded-full border border-[#e4d29d] bg-[#f5ecd4] px-3 py-1.5 text-[10px] font-bold tracking-[.14em] text-[#765e24]" data-testid="badge-demo-mode"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#c39a4d]" />DEMO MODE — SIMULATED DATA</div> : <div className="flex items-center gap-2 rounded-full border border-[#c4ddcd] bg-[#e3f0e5] px-3 py-1.5 text-[10px] font-bold tracking-[.14em] text-[#25614d]" data-testid="badge-live-mode"><span className="h-1.5 w-1.5 rounded-full bg-[#5f9e87]" />LIVE FIREBASE TELEMETRY</div>}<div className="hidden items-center gap-2 text-xs text-muted-foreground sm:flex"><LockKeyhole size={13} />ESP32 / local station 01</div></div><AlertBanner aqua={aqua} />{page}</main><footer className="mx-auto flex max-w-[1480px] flex-col gap-2 border-t border-border px-5 py-6 text-[11px] text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-8"><span>Hardware under assembly · Live Firebase telemetry will replace simulation when configured.</span><span className="flex items-center gap-2"><Check size={13} className="text-[#5f9e87]" />Guardrails active</span></footer><WAToast /></div>;
+  return <div className="app-shell"><Header activeTab={tab} setActiveTab={setTab} demoActive={aqua.demoActive} exitDemo={aqua.exitDemo} replayDemo={aqua.replayDemo} phase={aqua.data.system.phase} soundMuted={aqua.soundMuted} toggleSound={aqua.toggleSound} role={userRole} setRole={setUserRole} station={station} setStation={setStation} /><main className="mx-auto max-w-[1480px] px-5 py-7 sm:px-8 sm:py-10"><div className="mb-6 flex items-center justify-between">{aqua.demoActive ? <div className="flex items-center gap-2 rounded-full border border-[#e4d29d] bg-[#f5ecd4] px-3 py-1.5 text-[10px] font-bold tracking-[.14em] text-[#765e24]" data-testid="badge-demo-mode"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#c39a4d]" />DEMO MODE — SIMULATED DATA</div> : <div className="flex items-center gap-2 rounded-full border border-[#c4ddcd] bg-[#e3f0e5] px-3 py-1.5 text-[10px] font-bold tracking-[.14em] text-[#25614d]" data-testid="badge-live-mode"><span className="h-1.5 w-1.5 rounded-full bg-[#5f9e87]" />LIVE FIREBASE TELEMETRY</div>}<div className="hidden items-center gap-2 text-xs text-muted-foreground sm:flex"><LockKeyhole size={13} />ESP32 / local station 01</div></div><AlertBanner aqua={aqua} station={station} role={userRole} />{page}</main><footer className="mx-auto flex max-w-[1480px] flex-col gap-2 border-t border-border px-5 py-6 text-[11px] text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-8"><span>Hardware under assembly · Live Firebase telemetry will replace simulation when configured.</span><span className="flex items-center gap-2"><Check size={13} className="text-[#5f9e87]" />Guardrails active</span></footer><WAToast /></div>;
 }
 
 export default function App() {
