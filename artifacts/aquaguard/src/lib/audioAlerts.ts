@@ -273,7 +273,7 @@ export async function sendAutomatedWhatsAppAlert(payload: WhatsAppAlertPayload):
             timestamp: Date.now(),
           };
 
-      await fetch(config.webhookUrl, {
+      const res = await fetch(config.webhookUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -281,8 +281,10 @@ export async function sendAutomatedWhatsAppAlert(payload: WhatsAppAlertPayload):
         },
         body: JSON.stringify(body),
       });
-      modeUsed = 'secure_https_webhook';
-      directDelivered = true;
+      if (res.ok) {
+        modeUsed = 'secure_https_webhook';
+        directDelivered = true;
+      }
     } catch {
       // Webhook fallback
     }
