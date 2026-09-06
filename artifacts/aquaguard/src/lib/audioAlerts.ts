@@ -254,18 +254,27 @@ export async function sendAutomatedWhatsAppAlert(payload: WhatsAppAlertPayload):
   // 2. If Custom Secure HTTPS Webhook URL is provided -> 256-Bit SSL HTTPS POST
   if (!directDelivered && config.webhookUrl) {
     try {
+      const isUltraMsg = config.webhookUrl.includes('ultramsg.com');
+      const body = isUltraMsg
+        ? {
+            token: config.webhookToken || '',
+            to: cleanPhone,
+            body: text,
+          }
+        : {
+            phone: cleanPhone,
+            message: text,
+            payload,
+            timestamp: Date.now(),
+          };
+
       await fetch(config.webhookUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(config.webhookToken ? { Authorization: `Bearer ${config.webhookToken}` } : {}),
+          ...(config.webhookToken && !isUltraMsg ? { Authorization: `Bearer ${config.webhookToken}` } : {}),
         },
-        body: JSON.stringify({
-          phone: cleanPhone,
-          message: text,
-          payload,
-          timestamp: Date.now(),
-        }),
+        body: JSON.stringify(body),
       });
       modeUsed = 'secure_https_webhook';
       directDelivered = true;
