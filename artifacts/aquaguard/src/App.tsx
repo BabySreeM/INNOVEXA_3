@@ -482,13 +482,15 @@ function EventLog({ events }: { events: any[] }) {
       'ISO_TIMESTAMP,EVENT_TYPE,TELEMETRY_LOG_MESSAGE',
     ];
     const csv = [...header, ...events.map((e) => `${new Date(e.timestamp).toISOString()},${e.type},"${e.message.replaceAll('"', '""')}"`)].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `INNOVEXA_ISO_Compliance_Report_${Date.now()}.csv`;
+    link.setAttribute('download', `INNOVEXA_ISO_14001_Compliance_Audit_Report.csv`);
+    document.body.appendChild(link);
     link.click();
-    URL.revokeObjectURL(url);
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
   return <div className="space-y-5"><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><div className="eyebrow">Event Log / permanent record</div><h1 className="display-face mt-1 text-4xl font-semibold sm:text-5xl">What changed, and when.</h1></div><button type="button" onClick={exportLog} className="btn-quiet flex items-center justify-center gap-2 rounded-xl border border-[#25614d]/30 bg-[#25614d]/10 px-4 py-3 text-xs font-semibold text-[#25614d] hover:bg-[#25614d]/20" data-testid="button-export-log"><Download size={15} /> Export ISO Compliance Audit Report (CSV)</button></div><section className="panel overflow-hidden rounded-[1.35rem]" data-testid="card-event-log"><div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4"><div className="flex gap-1.5">{['ALL', 'SYSTEM', 'ALERT', 'COMMAND', 'EMERGENCY'].map((item) => <button type="button" key={item} onClick={() => setFilter(item)} className={`rounded-full px-3 py-1.5 text-[10px] font-bold tracking-wider ${filter === item ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'}`} data-testid={`filter-events-${item.toLowerCase()}`}>{item}</button>)}</div><span className="text-xs text-muted-foreground">{filtered.length} records · newest first</span></div><div>{filtered.map((event, index) => <div key={`${event.timestamp}-${index}`} className="flex gap-4 border-b border-border px-5 py-5 last:border-0" data-testid={`row-event-${index}`}><div className={`mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${event.type === 'ALERT' || event.type === 'EMERGENCY' ? 'bg-[#f3d4cd] text-[#93483d]' : event.type === 'COMMAND' ? 'bg-[#f1e2bc] text-[#765e24]' : 'bg-secondary text-primary'}`}>{event.type === 'ALERT' || event.type === 'EMERGENCY' ? <AlertTriangle size={15} /> : event.type === 'COMMAND' ? <SlidersHorizontal size={15} /> : <Activity size={15} />}</div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center justify-between gap-2"><span className="text-[10px] font-bold tracking-[.14em] text-muted-foreground">{event.type}</span><span className="text-[11px] text-muted-foreground">{timeAgo(event.timestamp)}</span></div><p className="mt-2 text-sm leading-5 text-primary" data-testid={`text-event-message-${index}`}>{event.message}</p></div></div>)}</div></section></div>;
 }
