@@ -203,16 +203,7 @@ export function generateWhatsAppUrl(payload: WhatsAppAlertPayload, phoneNumber =
   const phaseTitle = payload.phase.replace('_', ' ');
   const timeStr = new Date().toLocaleTimeString();
 
-  const baseUrl = typeof window !== 'undefined' ? window.location.origin + window.location.pathname : 'http://localhost:5173/';
-  const stateUrl = `${baseUrl}?alert=${encodeURIComponent(payload.phase)}&tank=${encodeURIComponent(payload.priorityTank || 'A')}`;
-
-  const text = `🚨 *INNOVEXA CRITICAL TELEMETRY ALERT* 🚨
-📍 *Station:* ${station}
-⏰ *Time:* ${timeStr}
-⚠️ *Phase Status:* ${phaseTitle}
-📋 *Event Details:* ${payload.message}
-${payload.priorityTank ? `🛡️ *Priority Tank:* Tank ${payload.priorityTank}\n` : ''}${payload.waterSaved !== undefined ? `💧 *Water Saved:* ${payload.waterSaved.toFixed(1)} L\n` : ''}
-🔗 *Live Command Dashboard:* ${stateUrl}`;
+  const text = `🚨 *INNOVEXA AUTOMATED ALERT* 🚨\n📍 *Station:* ${station}\n⏰ *Time:* ${timeStr}\n⚠️ *Phase:* ${phaseTitle}\n📋 *Details:* ${payload.message}`;
 
   const encodedText = encodeURIComponent(text);
   const cleanPhone = (phoneNumber || getWhatsAppConfig().phone).replace(/[^0-9]/g, '');
@@ -227,10 +218,7 @@ export async function sendAutomatedWhatsAppAlert(payload: WhatsAppAlertPayload):
   const phaseTitle = payload.phase.replace('_', ' ');
   const timeStr = new Date().toLocaleTimeString();
 
-  const baseUrl = typeof window !== 'undefined' ? window.location.origin + window.location.pathname : 'https://innovexa-aquagaurd6.netlify.app/';
-  const stateUrl = `${baseUrl}?alert=${encodeURIComponent(payload.phase)}&tank=${encodeURIComponent(payload.priorityTank || 'A')}`;
-
-  const text = `🚨 *INNOVEXA AUTOMATED ALERT* 🚨\n📍 *Station:* ${station}\n⏰ *Time:* ${timeStr}\n⚠️ *Phase:* ${phaseTitle}\n📋 *Details:* ${payload.message}\n🔗 *Dashboard:* ${stateUrl}`;
+  const text = `🚨 *INNOVEXA AUTOMATED ALERT* 🚨\n📍 *Station:* ${station}\n⏰ *Time:* ${timeStr}\n⚠️ *Phase:* ${phaseTitle}\n📋 *Details:* ${payload.message}`;
 
   const cleanPhone = (config.phone || DEFAULT_PHONE).replace(/[^0-9]/g, '');
   const waUrl = generateWhatsAppUrl(payload, cleanPhone);
