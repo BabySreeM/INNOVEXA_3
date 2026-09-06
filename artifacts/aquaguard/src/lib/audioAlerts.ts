@@ -227,7 +227,10 @@ export async function sendAutomatedWhatsAppAlert(payload: WhatsAppAlertPayload):
   const phaseTitle = payload.phase.replace('_', ' ');
   const timeStr = new Date().toLocaleTimeString();
 
-  const text = `🚨 *INNOVEXA AUTOMATED ALERT* 🚨\n📍 *Station:* ${station}\n⏰ *Time:* ${timeStr}\n⚠️ *Phase:* ${phaseTitle}\n📋 *Details:* ${payload.message}\n🔗 *Dashboard:* ${typeof window !== 'undefined' ? window.location.href : 'http://localhost:5173'}`;
+  const baseUrl = typeof window !== 'undefined' ? window.location.origin + window.location.pathname : 'https://innovexa-aquagaurd6.netlify.app/';
+  const stateUrl = `${baseUrl}?alert=${encodeURIComponent(payload.phase)}&tank=${encodeURIComponent(payload.priorityTank || 'A')}`;
+
+  const text = `🚨 *INNOVEXA AUTOMATED ALERT* 🚨\n📍 *Station:* ${station}\n⏰ *Time:* ${timeStr}\n⚠️ *Phase:* ${phaseTitle}\n📋 *Details:* ${payload.message}\n🔗 *Dashboard:* ${stateUrl}`;
 
   const cleanPhone = (config.phone || DEFAULT_PHONE).replace(/[^0-9]/g, '');
   const waUrl = generateWhatsAppUrl(payload, cleanPhone);
