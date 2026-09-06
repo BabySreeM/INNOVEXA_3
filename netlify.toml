@@ -1,5 +1,5 @@
 [build]
-  command = "cd artifacts/aquaguard && npm install && npx vite build --config vite.config.ts"
+  command = "npm run build || (cd artifacts/aquaguard && npm install && npx vite build --config vite.config.ts)"
   publish = "artifacts/aquaguard/dist/public"
 
 [[redirects]]
