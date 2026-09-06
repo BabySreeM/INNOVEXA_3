@@ -201,13 +201,16 @@ export function generateWhatsAppUrl(payload: WhatsAppAlertPayload, phoneNumber =
   const phaseTitle = payload.phase.replace('_', ' ');
   const timeStr = new Date().toLocaleTimeString();
 
+  const baseUrl = typeof window !== 'undefined' ? window.location.origin + window.location.pathname : 'http://localhost:5173/';
+  const stateUrl = `${baseUrl}?alert=${encodeURIComponent(payload.phase)}&tank=${encodeURIComponent(payload.priorityTank || 'A')}`;
+
   const text = `🚨 *INNOVEXA CRITICAL TELEMETRY ALERT* 🚨
 📍 *Station:* ${station}
 ⏰ *Time:* ${timeStr}
 ⚠️ *Phase Status:* ${phaseTitle}
 📋 *Event Details:* ${payload.message}
 ${payload.priorityTank ? `🛡️ *Priority Tank:* Tank ${payload.priorityTank}\n` : ''}${payload.waterSaved !== undefined ? `💧 *Water Saved:* ${payload.waterSaved.toFixed(1)} L\n` : ''}
-🔗 *Live Command Dashboard:* ${typeof window !== 'undefined' ? window.location.href : 'http://localhost:5173'}`;
+🔗 *Live Command Dashboard:* ${stateUrl}`;
 
   const encodedText = encodeURIComponent(text);
   const cleanPhone = (phoneNumber || getWhatsAppConfig().phone).replace(/[^0-9]/g, '');
