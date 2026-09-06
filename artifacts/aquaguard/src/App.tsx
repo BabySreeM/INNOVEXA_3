@@ -417,8 +417,26 @@ function WAToast() {
 function Dashboard() {
   const aqua = useInnovexa();
   const [tab, setTab] = useState<Tab>('Operations');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const alertParam = params.get('alert');
+      if (!aqua.demoActive && !aqua.isConnected) {
+        aqua.runDemo();
+      }
+      if (alertParam) {
+        if (alertParam.includes('LEAK') || alertParam === 'BYPASS_ACTIVE') {
+          setTimeout(() => aqua.simulateLeakB(), 400);
+        } else if (alertParam.includes('CRITICAL')) {
+          setTimeout(() => aqua.simulateSourceCritical(), 400);
+        }
+      }
+    }
+  }, []);
+
   if (!aqua.demoActive && !aqua.isConnected) return <EntryState runDemo={aqua.runDemo} isLoading={aqua.isLiveLoading} />;
-   const page = tab === 'Operations' ? <Operations {...aqua} /> : tab === 'Controls' ? <Controls data={aqua.data} connected={aqua.isConnected} simulateLeakA={aqua.simulateLeakA} simulateLeakB={aqua.simulateLeakB} simulateSourceCritical={aqua.simulateSourceCritical} resetScenario={aqua.resetScenario} updateCommand={aqua.updateCommand} resetControls={aqua.resetControls} emergencyStop={aqua.emergencyStop} resume={aqua.resume} /> : tab === 'Event Log' ? <EventLog events={aqua.events} /> : <History history={aqua.history} />;
+  const page = tab === 'Operations' ? <Operations {...aqua} /> : tab === 'Controls' ? <Controls data={aqua.data} connected={aqua.isConnected} simulateLeakA={aqua.simulateLeakA} simulateLeakB={aqua.simulateLeakB} simulateSourceCritical={aqua.simulateSourceCritical} resetScenario={aqua.resetScenario} updateCommand={aqua.updateCommand} resetControls={aqua.resetControls} emergencyStop={aqua.emergencyStop} resume={aqua.resume} /> : tab === 'Event Log' ? <EventLog events={aqua.events} /> : <History history={aqua.history} />;
   return <div className="app-shell"><Header activeTab={tab} setActiveTab={setTab} demoActive={aqua.demoActive} exitDemo={aqua.exitDemo} replayDemo={aqua.replayDemo} phase={aqua.data.system.phase} soundMuted={aqua.soundMuted} toggleSound={aqua.toggleSound} /><main className="mx-auto max-w-[1480px] px-5 py-7 sm:px-8 sm:py-10"><div className="mb-6 flex items-center justify-between">{aqua.demoActive ? <div className="flex items-center gap-2 rounded-full border border-[#e4d29d] bg-[#f5ecd4] px-3 py-1.5 text-[10px] font-bold tracking-[.14em] text-[#765e24]" data-testid="badge-demo-mode"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#c39a4d]" />DEMO MODE — SIMULATED DATA</div> : <div className="flex items-center gap-2 rounded-full border border-[#c4ddcd] bg-[#e3f0e5] px-3 py-1.5 text-[10px] font-bold tracking-[.14em] text-[#25614d]" data-testid="badge-live-mode"><span className="h-1.5 w-1.5 rounded-full bg-[#5f9e87]" />LIVE FIREBASE TELEMETRY</div>}<div className="hidden items-center gap-2 text-xs text-muted-foreground sm:flex"><LockKeyhole size={13} />ESP32 / local station 01</div></div><AlertBanner aqua={aqua} />{page}</main><footer className="mx-auto flex max-w-[1480px] flex-col gap-2 border-t border-border px-5 py-6 text-[11px] text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-8"><span>Hardware under assembly · Live Firebase telemetry will replace simulation when configured.</span><span className="flex items-center gap-2"><Check size={13} className="text-[#5f9e87]" />Guardrails active</span></footer><WAToast /></div>;
 }
 
