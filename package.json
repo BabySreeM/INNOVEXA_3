@@ -1,7 +1,0 @@
-{
-  "name": "aquaguard-dashboard-root",
-  "private": true,
-  "scripts": {
-    "build": "cd artifacts/aquaguard && npm install && npx vite build --config vite.config.ts"
-  }
-}
