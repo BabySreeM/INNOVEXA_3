@@ -9,9 +9,9 @@
 
 ## 📌 Executive Overview
 
-**INNOVEXA (AquaGuard)** is an enterprise-grade, Hardware-in-the-Loop (HIL) IoT & Artificial Intelligence Digital Twin platform engineered to solve critical water distribution losses, prevent catastrophic pipe ruptures, optimize pump energy utilization, and provide automated multi-channel emergency dispatching.
+**INNOVEXA (AquaGuard)** is an enterprise-grade, Hardware-in-the-Loop (HIL) IoT & Artificial Intelligence Digital Twin platform engineered to solve critical water distribution losses, prevent catastrophic pipe ruptures, optimize pump energy utilization, and provide automated emergency dispatching.
 
-By combining low-latency **ESP32 microcontroller telemetry**, **Firebase Realtime Database synchronization**, a dynamic **Predictive AI Risk Engine**, closed-loop **zero-water-loss bypass isolation**, and multi-channel telemetry dispatches (**WhatsApp**, **Telegram**, **Twilio SMS/Voice**, and **Web Speech Audio Alerts**), INNOVEXA provides end-to-end operational visibility and automated crisis remediation.
+By combining low-latency **ESP32 microcontroller telemetry**, **Firebase Realtime Database synchronization**, a dynamic **Predictive AI Risk Engine**, closed-loop **zero-water-loss bypass isolation**, and automated telemetry dispatches (**WhatsApp Baileys Bot** and **Web Speech Audio Alerts**), INNOVEXA provides end-to-end operational visibility and automated crisis remediation.
 
 ---
 
@@ -22,12 +22,12 @@ By combining low-latency **ESP32 microcontroller telemetry**, **Firebase Realtim
 
 | Sl. No. | Team Member Name | SIH Functional Role | Core Project Responsibilities |
 | :---: | :--- | :--- | :--- |
-| 1 | **BABY SREE M** *(Team Leader)* | **System Architect & Full-Stack Lead** | Platform Architecture, React 18 Dashboard, Firebase Telemetry Sync & Digital Twin Engine |
-| 2 | **DIVYA KEERTHANA S D** | **Embedded Systems & Hardware Twin Lead** | ESP32 Micro-State Machine, Solenoid Valves (SV1–SV3) & Ultrasonic/Flow Sensors Wiring |
-| 3 | **INDUMATHI P** | **Predictive AI & Data Science Lead** | Anomaly Risk Engine ($\Delta P / \Delta t$ Pressure Gradient & Dynamic Model Confidence %) |
-| 4 | **KANIGA SRI S** | **Telemetry & Multi-Channel Dispatch Specialist** | WhatsApp Baileys Bot, Telegram Telemetry Bot & Twilio Emergency SMS/Voice Dispatch |
-| 5 | **MOHAMED MYDEEN D** | **ISO 14001 Environmental Compliance Lead** | Carbon/Water Reduction Analytics, Closed-Loop Bypass Tracking & CSV Audit Exporter |
-| 6 | **GIRIJA S** | **UI/UX & Interactive Telemetry Developer** | Real-time Recharts Dynamics, Dynamic Risk Badges & Interactive Control UI |
+| 1 | **BABY SREE M** *(Team Leader)* | **Chief AI Architect, Hardware Digital Twin & Full-Stack System Lead** | **[CORE PROJECT BRAIN]** Predictive Risk Engine ($\Delta P / \Delta t$ Anomaly Model), ESP32 Digital Twin Logic, React 18 Dashboard & Firebase Cloud Architecture |
+| 2 | **DIVYA KEERTHANA S D** | **Embedded Systems & Hardware Engineer** | ESP32 Solenoid Relay Wiring, Ultrasonic Level Sensors & Hardware Circuit Maintenance |
+| 3 | **INDUMATHI P** | **Data Analytics & System Testing Specialist** | Telemetry Data Verification, Anomaly Test Automation & Dynamic Metric Validation |
+| 4 | **KANIGA SRI S** | **WhatsApp Telemetry Bot Specialist** | WhatsApp Baileys Bot Integration, Automated Alert Formatting & Emergency Notifications |
+| 5 | **MOHAMED MYDEEN D** | **ISO 14001 Environmental Compliance Specialist** | ISO 14001 Compliance Tracking, Carbon Footprint Metrics & CSV Log Exporting |
+| 6 | **GIRIJA S** | **UI Documentation & User Experience Specialist** | Dashboard Layout Documentation, Presentation Graphics & Operational User Guide |
 
 ---
 
@@ -90,14 +90,12 @@ flowchart TB
         AI --> SPEECH
     end
 
-    subgraph Multi-Channel Emergency Dispatchers [Automated Alert Network]
+    subgraph Automated Telemetry Dispatchers [Emergency Alert Network]
         WA[WhatsApp Baileys / WebJS Bot]
-        TG[Telegram Telemetry Bot]
-        TW[Twilio SMS & Voice Alerts]
+        AUDIO[Web Speech Audio Dispatcher]
 
         AI -- "Trigger Critical Alert" --> WA
-        AI -- "Trigger Critical Alert" --> TG
-        AI -- "Trigger Critical Alert" --> TW
+        AI -- "Trigger Audio Warning" --> AUDIO
     end
 ```
 
@@ -119,10 +117,8 @@ flowchart TB
 - **Model Confidence Calculation**: Computes dynamic confidence scores (e.g., 94.8% confidence on emergency triggers vs. nominal 12.1% baseline).
 - **Automated Threshold Detection**: Triggers immediate emergency response upon detecting flow divergence between main header and branch meters.
 
-### 3. 📱 Automated Multi-Channel Telemetry Dispatchers
+### 3. 📱 Automated WhatsApp & Audio Telemetry Dispatchers
 - **WhatsApp Integration**: Baileys / `whatsapp-web.js` bot sending formatted alerts directly to municipal engineers with exact leak location, risk metrics, and timestamps.
-- **Telegram Bot**: Instant dispatch of system logs and critical risk parameter telemetry.
-- **Twilio SMS & Voice Dispatch**: Automated emergency voice calls executed during E-Stop or Critical Tank Reserve events.
 - **Web Speech API Audio Alerts**: Dynamic browser speech synthesizer announcing system phase changes and critical warnings aloud.
 
 ### 4. 📊 ISO 14001 Environmental Compliance & Auditing
