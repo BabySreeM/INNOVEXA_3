@@ -16,6 +16,22 @@ By combining low-latency **ESP32 microcontroller telemetry**, **Firebase Realtim
 
 ---
 
+## 👥 Team INNOVEXA (SIH 2026)
+
+* **Problem Statements**: **PS 26217** (Sustainable Resource Management) & **PS 26219** (Intelligent Resource Transformation with AI Insights)
+* **Team Name**: Team INNOVEXA
+
+| Sl. No. | Team Member Name | SIH Functional Role | Core Project Responsibilities |
+| :---: | :--- | :--- | :--- |
+| 1 | **BABY SREE M** *(Team Leader)* | **System Architect & Full-Stack Lead** | Platform Architecture, React 18 Dashboard, Firebase Telemetry Sync & Digital Twin Engine |
+| 2 | **DIVYA KEERTHANA S D** | **Embedded Systems & Hardware Twin Lead** | ESP32 Micro-State Machine, Solenoid Valves (SV1–SV3) & Ultrasonic/Flow Sensors Wiring |
+| 3 | **INDUMATHI P** | **Predictive AI & Data Science Lead** | Anomaly Risk Engine ($\Delta P / \Delta t$ Pressure Gradient & Dynamic Model Confidence %) |
+| 4 | **KANIGA SRI S** | **Telemetry & Multi-Channel Dispatch Specialist** | WhatsApp Baileys Bot, Telegram Telemetry Bot & Twilio Emergency SMS/Voice Dispatch |
+| 5 | **MOHAMED MYDEEN D** | **ISO 14001 Environmental Compliance Lead** | Carbon/Water Reduction Analytics, Closed-Loop Bypass Tracking & CSV Audit Exporter |
+| 6 | **GIRIJA S** | **UI/UX & Interactive Telemetry Developer** | Real-time Recharts Dynamics, Dynamic Risk Badges & Interactive Control UI |
+
+---
+
 ## 🎯 Dual Problem Statement Alignment Matrix
 
 INNOVEXA is uniquely structured to fulfill the mandatory requirements of two distinct Smart India Hackathon (SIH 2026) Student Innovation tracks without changing code or architecture:
@@ -208,15 +224,15 @@ The digital twin and web dashboard communicate bidirectionally via the following
 
 ### Step 1: Clone Repository & Install Dependencies
 ```bash
-git clone https://github.com/BabySreeM/AquaGuard-Dashboard.git
-cd AquaGuard-Dashboard
+git clone https://github.com/BabySreeM/innovexa.git
+cd innovexa
 
 # Install workspace dependencies
 pnpm install
 ```
 
 ### Step 2: Environment Configuration
-Create a `.env` file in the project root (or verify `artifacts/aquaguard/.env`):
+Create a `.env` file in the project root:
 ```env
 VITE_FIREBASE_DATABASE_URL=https://innovexa-sih-default-rtdb.firebaseio.com
 VITE_FIREBASE_API_KEY=AIzaSyDummyKeyForSIHHackathon2026
@@ -273,4 +289,4 @@ INNOVEXA automatically logs all environmental parameters required by the **ISO 1
 ## 📜 License & Copyright
 
 This project is submitted for the **Smart India Hackathon (SIH 2026)**.
-Developed by Team INNOVEXA. Distributed under the [MIT License](LICENSE).
+Developed by **Team INNOVEXA**. Distributed under the [MIT License](LICENSE).
