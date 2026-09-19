@@ -1,6 +1,6 @@
 import express from 'express';
 import cors from 'cors';
-import makeWASocket, { useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } from '@whiskeysockets/baileys';
+import makeWASocket, { useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion, Browsers } from '@whiskeysockets/baileys';
 import fs from 'fs';
 import path from 'path';
 
@@ -12,6 +12,7 @@ app.use(express.urlencoded({ extended: true }));
 let sock = null;
 let isReady = false;
 let currentQR = '';
+let connectionAttempts = 0;
 
 async function connectToWhatsApp() {
   const authFolder = path.join(process.cwd(), 'baileys_cloud_auth');
@@ -22,10 +23,16 @@ async function connectToWhatsApp() {
   const { state, saveCreds } = await useMultiFileAuthState(authFolder);
   const { version } = await fetchLatestBaileysVersion().catch(() => ({ version: [2, 3000, 1015901307] }));
 
+  console.log(`🤖 Initializing Baileys WA Socket (Version: ${version.join('.')})...`);
+
   sock = makeWASocket({
     version,
     auth: state,
+    browser: Browsers.ubuntu('Chrome'),
     printQRInTerminal: true,
+    syncFullHistory: false,
+    connectTimeoutMs: 60000,
+    keepAliveIntervalMs: 25000,
   });
 
   sock.ev.on('creds.update', saveCreds);
@@ -35,22 +42,35 @@ async function connectToWhatsApp() {
     
     if (qr) {
       currentQR = qr;
+      connectionAttempts = 0;
       console.log('\n==================================================');
-      console.log('📲 FRESH WHATSAPP QR CODE GENERATED FOR CLOUD:');
+      console.log('📲 FRESH WHATSAPP QR CODE GENERATED FOR CLOUD!');
       console.log('==================================================\n');
     }
 
     if (connection === 'close') {
       isReady = false;
+      connectionAttempts++;
       const statusCode = lastDisconnect?.error?.output?.statusCode;
       const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
-      console.log('Baileys connection closed. Reconnecting:', shouldReconnect);
+      console.log(`Baileys connection closed (Attempt ${connectionAttempts}). Reconnecting: ${shouldReconnect}`);
+      
+      // If stuck in reconnection loop without QR, clean auth state to force QR generation
+      if (connectionAttempts > 3) {
+        console.log('⚠️ Clearing stale auth state to force fresh QR code generation...');
+        try {
+          fs.rmSync(authFolder, { recursive: true, force: true });
+        } catch (e) {}
+        connectionAttempts = 0;
+      }
+
       if (shouldReconnect) {
-        setTimeout(connectToWhatsApp, 3000);
+        setTimeout(connectToWhatsApp, 2000);
       }
     } else if (connection === 'open') {
       isReady = true;
       currentQR = '';
+      connectionAttempts = 0;
       console.log('\n==================================================');
       console.log('✅ INNOVEXA WHATSAPP BOT CONNECTED VIA BAILEYS CLOUD!');
       console.log('==================================================\n');
@@ -62,6 +82,19 @@ app.get('/', (req, res) => res.redirect('/qr'));
 
 app.get('/status', (req, res) => {
   res.json({ ready: isReady, status: isReady ? 'connected' : 'waiting_qr', hasQr: Boolean(currentQR) });
+});
+
+app.get('/reset', async (req, res) => {
+  console.log('🔄 Manual /reset requested. Clearing session storage...');
+  isReady = false;
+  currentQR = '';
+  const authFolder = path.join(process.cwd(), 'baileys_cloud_auth');
+  try {
+    if (sock) sock.end();
+    fs.rmSync(authFolder, { recursive: true, force: true });
+  } catch (e) {}
+  setTimeout(connectToWhatsApp, 1000);
+  res.send('<h2>🔄 Session reset! Generating fresh QR code... <a href="/qr">View QR Code</a></h2>');
 });
 
 app.get('/qr', (req, res) => {

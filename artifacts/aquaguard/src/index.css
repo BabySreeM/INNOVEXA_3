@@ -143,6 +143,8 @@
 @keyframes changedPulse { 0% { box-shadow: 0 0 0 0 rgba(203,164,92,.55); } 100% { box-shadow: 0 0 0 11px rgba(203,164,92,0); } }
 .bypass-flow { stroke-dasharray: 5 7; animation: flowDash 1.1s linear infinite; }
 @keyframes flowDash { to { stroke-dashoffset: -24; } }
+.water-stream { stroke-dasharray: 8 10; animation: waterStream .8s linear infinite; }
+@keyframes waterStream { to { stroke-dashoffset: -36; } }
 .valve-shape { transition: fill .25s ease, stroke .25s ease, transform .25s ease; transform-box: fill-box; transform-origin: center; }
 .valve-shape.open { fill: #5f9e87; stroke: #1f6654; }
 .valve-shape.closed { fill: #d87563; stroke: #a54e45; }

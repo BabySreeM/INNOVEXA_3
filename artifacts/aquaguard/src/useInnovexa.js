@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getApps, initializeApp } from 'firebase/app';
 import { getDatabase, onChildAdded, onValue, ref, set } from 'firebase/database';
-import { playLeakAlert, playCriticalReserveAlert, playEmergencyStopAlert, getAudioMuted, toggleAudioMuted, sendAutomatedWhatsAppAlert } from './lib/audioAlerts';
+import { playLeakAlert, playCriticalReserveAlert, playEmergencyStopAlert, getAudioMuted, toggleAudioMuted, sendAutomatedWhatsAppAlert, speakAlertAnnouncement, stopAllAlertSoundsAndSpeech } from './lib/audioAlerts';
 
 const initialTanks = {
   A: { level_cm: 72.4, level_pct: 68.8, is_critical: false },
@@ -34,7 +34,7 @@ function normalizeLive(raw) {
   return {
     ...initialData,
     ...raw,
-    system: { ...initialData.system, ...(raw.system || {}) },
+    system: { ...initialData.system, ...(raw.system || {}), last_updated: Date.now() },
     tanks: { ...initialTanks, ...(raw.tanks || {}) },
     source: { ...initialData.source, ...(raw.source || {}) },
     valves: { ...initialData.valves, ...(raw.valves || {}), bypass_manual: raw.valves?.bypass_manual === true ? 'OPEN' : raw.valves?.bypass_manual || 'CLOSED' },
@@ -44,26 +44,30 @@ function normalizeLive(raw) {
   };
 }
 
-const firebaseDatabaseUrl = import.meta.env.VITE_FIREBASE_DATABASE_URL;
-const firebaseApiKey = import.meta.env.VITE_FIREBASE_API_KEY;
-const firebaseProjectId = import.meta.env.VITE_FIREBASE_PROJECT_ID;
-const firebaseAppId = import.meta.env.VITE_FIREBASE_APP_ID;
-const firebaseApp = firebaseDatabaseUrl && firebaseApiKey && firebaseProjectId && firebaseAppId
-  ? (getApps()[0] || initializeApp({
-      apiKey: firebaseApiKey,
-      authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-      databaseURL: firebaseDatabaseUrl,
-      projectId: firebaseProjectId,
-      storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-      messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-      appId: firebaseAppId,
-    }))
-  : null;
-const firebaseDatabase = firebaseApp && firebaseDatabaseUrl ? getDatabase(firebaseApp, firebaseDatabaseUrl) : null;
+
+const firebaseDatabaseUrl = import.meta.env.VITE_FIREBASE_DATABASE_URL || 'https://innovexa-sih-default-rtdb.firebaseio.com';
+const firebaseApiKey = import.meta.env.VITE_FIREBASE_API_KEY || 'AIzaSyDummyKeyForSIHHackathon2026';
+const firebaseProjectId = import.meta.env.VITE_FIREBASE_PROJECT_ID || 'innovexa-sih';
+const firebaseAppId = import.meta.env.VITE_FIREBASE_APP_ID || '1:123456789012:web:abcdef123456';
+const firebaseApp = (getApps()[0] || initializeApp({
+  apiKey: firebaseApiKey,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'innovexa-sih.firebaseapp.com',
+  databaseURL: firebaseDatabaseUrl,
+  projectId: firebaseProjectId,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'innovexa-sih.appspot.com',
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '123456789012',
+  appId: firebaseAppId,
+}));
+const firebaseDatabase = firebaseApp ? getDatabase(firebaseApp, firebaseDatabaseUrl) : null;
+
 
 export function useInnovexa(opts = {}) {
   const liveUrl = firebaseDatabaseUrl;
   const [demoActive, setDemoActive] = useState(false);
+
+
+
+
   const [scenario, setScenario] = useState('NORMAL');
   const [data, setData] = useState(() => clone(initialData));
   const [events, setEvents] = useState(baseEvents);
@@ -122,6 +126,7 @@ export function useInnovexa(opts = {}) {
         next.commands.manual_valve_override = {};
         next.commands.priority_tank = 'A';
         next.commands.bypass_confirm = false;
+        next.commands.estop_triggered = false;
         next.alerts.leak_detected = false;
         next.alerts.bucket_leak_sensor = false;
         next.alerts.source_critical = false;
@@ -129,6 +134,8 @@ export function useInnovexa(opts = {}) {
         next.valves.SV2 = 'OPEN';
         next.valves.SV3 = 'OPEN';
         next.valves.bypass_manual = 'CLOSED';
+        next.system.pump_on = true;
+        next.system.phase = 'NORMAL';
       }
       return next;
     });
@@ -142,9 +149,11 @@ export function useInnovexa(opts = {}) {
     addEvent(target === 'NORMAL' ? 'SYSTEM' : 'ALERT', message);
     if (target === 'BRANCH_A' || target === 'BRANCH_B') {
       playLeakAlert();
+      speakAlertAnnouncement(message);
       sendAutomatedWhatsAppAlert({ phase: target, stationId: stationRef.current, role: roleRef.current, message, priorityTank: currentPriority });
     } else if (target === 'SOURCE_CRITICAL') {
       playCriticalReserveAlert();
+      speakAlertAnnouncement(message);
       sendAutomatedWhatsAppAlert({ phase: 'CRITICAL_RESERVE', stationId: stationRef.current, role: roleRef.current, message, priorityTank: currentPriority });
     }
   }, [addEvent, data.commands?.priority_tank]);
@@ -244,35 +253,33 @@ export function useInnovexa(opts = {}) {
       set(ref(firebaseDatabase, 'valves/SV3'), 'CLOSED').catch(() => undefined);
       set(ref(firebaseDatabase, 'valves/bypass_manual'), 'CLOSED').catch(() => undefined);
     }
-    addEvent('EMERGENCY', 'Emergency Stop engaged. All valves closed and pump halted for system safety.');
+    const msg = 'Emergency Stop engaged. All valves closed and pump halted for system safety.';
+    addEvent('EMERGENCY', msg);
     playEmergencyStopAlert();
-    sendAutomatedWhatsAppAlert({ phase: 'EMERGENCY_STOP', stationId: stationRef.current, role: roleRef.current, message: 'Emergency Stop engaged. All valves closed and pump halted for system safety.' });
+    speakAlertAnnouncement(msg);
+    sendAutomatedWhatsAppAlert({ phase: 'EMERGENCY_STOP', stationId: stationRef.current, role: roleRef.current, message: msg });
   }, [addEvent, demoActive]);
 
   const resume = useCallback(() => {
-    setData((current) => {
-      const targetScenario = scenarioRef.current || 'NORMAL';
-      const isBranchA = targetScenario === 'BRANCH_A';
-      const isBranchB = targetScenario === 'BRANCH_B';
-      const isSourceCrit = targetScenario === 'SOURCE_CRITICAL';
-      const priority = current.commands.priority_tank || 'A';
-      return {
-        ...current,
-        system: { ...current.system, pump_on: true, last_updated: Date.now() },
-        valves: {
-          SV1: isBranchA ? 'CLOSED' : (isSourceCrit && priority !== 'A') ? 'CLOSED' : 'OPEN',
-          SV2: isBranchB ? 'CLOSED' : (isSourceCrit && priority !== 'B') ? 'CLOSED' : 'OPEN',
-          SV3: isSourceCrit ? (priority === 'C' ? 'OPEN' : 'CLOSED') : 'OPEN',
-          bypass_manual: isBranchA ? 'OPEN' : 'CLOSED',
-        },
-        flow: { main_header_lpm: 18.6, branch_A_lpm: 6.8, branch_B_inferred_lpm: 5.7, branch_C_inferred_lpm: 6.1 },
-        commands: { ...current.commands, estop_triggered: false },
-      };
-    });
+    stopAllAlertSoundsAndSpeech();
+    setScenario('NORMAL');
+    scenarioRef.current = 'NORMAL';
+    setPhaseStartedAt(Date.now());
+    setData((current) => ({
+      ...current,
+      system: { phase: 'NORMAL', pump_on: true, last_updated: Date.now() },
+      tanks: clone(initialTanks),
+      source: { level_pct: 76.2, critical: false },
+      valves: { SV1: 'OPEN', SV2: 'OPEN', SV3: 'OPEN', bypass_manual: 'CLOSED' },
+      alerts: { leak_detected: false, bucket_leak_sensor: false, source_critical: false },
+      commands: { bypass_confirm: false, estop_triggered: false, priority_tank: 'A', manual_valve_override: {} },
+    }));
     if (firebaseDatabase && !demoActive) {
       set(ref(firebaseDatabase, 'commands/estop_triggered'), false).catch(() => undefined);
+      set(ref(firebaseDatabase, 'commands/bypass_confirm'), false).catch(() => undefined);
+      set(ref(firebaseDatabase, 'commands/manual_valve_override'), null).catch(() => undefined);
     }
-    addEvent('COMMAND', 'System resumed. Pump and distribution valves returned to active operation.');
+    addEvent('SYSTEM', 'System resumed. Emergency halt cleared and distribution restored to NORMAL operation.');
   }, [addEvent, demoActive]);
 
   useEffect(() => {
@@ -289,8 +296,10 @@ export function useInnovexa(opts = {}) {
         setData(normalizeLive(raw));
         setLiveConnected(true);
         setIsLiveLoading(false);
+        setDemoActive(false);
       }
     }, () => {
+
       if (!cancelled) {
         setLiveConnected(false);
         setIsLiveLoading(false);
@@ -364,14 +373,38 @@ export function useInnovexa(opts = {}) {
     return { age, stale: age > 5000 };
   }, [clock, data.system.last_updated]);
 
+  const updateTankLevel = useCallback((tankKey, pct) => {
+    setData((current) => {
+      const next = clone(current);
+      if (next.tanks[tankKey]) {
+        const wasCritical = next.tanks[tankKey].is_critical;
+        const isNowCritical = pct < 20;
+        next.tanks[tankKey].level_pct = pct;
+        next.tanks[tankKey].level_cm = Number((pct * 1.05).toFixed(1));
+        next.tanks[tankKey].is_critical = isNowCritical;
+
+        if (!wasCritical && isNowCritical) {
+          const msg = `Critical low level detected in Tank ${tankKey} (${pct.toFixed(1)}%). Priority reserve protection engaged.`;
+          addEvent('ALERT', msg);
+          playCriticalReserveAlert();
+          speakAlertAnnouncement(msg);
+          sendAutomatedWhatsAppAlert({ phase: 'CRITICAL_RESERVE', stationId: stationRef.current, role: roleRef.current, message: msg, priorityTank: tankKey });
+        }
+      }
+      next.system.last_updated = Date.now();
+      return next;
+    });
+  }, [addEvent]);
+
   return {
     data, events, history, waterSaved, scenario, phaseStartedAt, freshness,
     demoActive, liveConfigured: Boolean(firebaseDatabase), isLiveLoading,
     isConnected: demoActive || liveConnected, soundMuted, toggleSound,
     runDemo, exitDemo, replayDemo, simulateLeakA: () => updateDemo('BRANCH_A'),
     simulateLeakB: () => updateDemo('BRANCH_B'), simulateSourceCritical: () => updateDemo('SOURCE_CRITICAL'),
-    resetScenario: () => updateDemo('NORMAL'), updateCommand, resetControls, emergencyStop, resume,
+    resetScenario: () => updateDemo('NORMAL'), updateCommand, resetControls, emergencyStop, resume, updateTankLevel,
   };
 }
+
 
 export default useInnovexa;

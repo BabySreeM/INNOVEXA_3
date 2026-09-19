@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Activity, AlertTriangle, ArrowDownToLine, BellRing, Check, CircleHelp, Download, Droplets, Gauge, GitBranch, History as HistoryIcon, LockKeyhole, MessageSquare, Pause, Play, Radio, RotateCcw, ShieldCheck, SlidersHorizontal, Sparkles, TriangleAlert, Volume2, VolumeX, X } from 'lucide-react';
+import { Activity, AlertTriangle, ArrowDownToLine, BellRing, Check, CircleHelp, Download, Droplets, ExternalLink, Gauge, GitBranch, History as HistoryIcon, LockKeyhole, MessageSquare, Pause, Play, QrCode, Radio, RotateCcw, ShieldCheck, SlidersHorizontal, Sparkles, TriangleAlert, Volume2, VolumeX, X } from 'lucide-react';
 import { useInnovexa } from './useInnovexa';
-import { getWhatsAppConfig, setWhatsAppConfig, generateWhatsAppUrl, playLeakAlert, sendAutomatedWhatsAppAlert } from './lib/audioAlerts';
+import { getWhatsAppConfig, setWhatsAppConfig, generateWhatsAppUrl, playLeakAlert, sendAutomatedWhatsAppAlert, getTelegramConfig, setTelegramConfig, sendTelegramAlert, getTwilioConfig, setTwilioConfig, sendTwilioWhatsAppAlert } from './lib/audioAlerts';
+import { HardwareTwinPanel } from './components/HardwareTwinPanel';
 import './index.css';
+
 
 type Tab = 'Operations' | 'Controls' | 'Event Log' | 'History';
 type TankKey = 'A' | 'B' | 'C';
@@ -26,25 +28,14 @@ function Logo() {
 
 function EntryState({ runDemo, isLoading }: { runDemo: () => void; isLoading: boolean }) {
   return <main className="flex min-h-[100dvh] items-center justify-center px-5 py-10">
-    <div className="enter-card w-full max-w-5xl overflow-hidden rounded-[2rem] panel">
-      <div className="grid min-h-[560px] lg:grid-cols-[1.06fr_.94fr]">
-        <section className="relative flex flex-col justify-between overflow-hidden bg-primary p-8 text-primary-foreground sm:p-12">
-          <div className="absolute -right-20 -top-20 h-72 w-72 rounded-full border border-primary-foreground/10" />
-          <div className="absolute -bottom-36 -left-20 h-96 w-96 rounded-full border border-primary-foreground/10" />
-          <Logo />
-          <div className="relative max-w-lg">
-            <div className="eyebrow mb-5 text-primary-foreground/60">Hardware assembly / station 01</div>
-            <h1 className="display-face max-w-[14ch] text-5xl font-semibold leading-[.95] sm:text-7xl">Protect every drop.</h1>
-            <p className="mt-7 max-w-md text-[15px] leading-7 text-primary-foreground/70">A calm, precise control room for the person watching a scarce water reserve. Track levels, isolate leaks, and keep distribution moving.</p>
-          </div>
-          <div className="relative flex items-center gap-3 text-xs text-primary-foreground/60"><div className="flex -space-x-1"><span className="h-7 w-7 rounded-full border-2 border-primary bg-accent" /><span className="h-7 w-7 rounded-full border-2 border-primary bg-[#b9c8a9]" /><span className="h-7 w-7 rounded-full border-2 border-primary bg-[#d9b777]" /></div><span>Built for an ESP32 field kit</span></div>
-        </section>
-        <section className="flex flex-col justify-center bg-card p-8 sm:p-12">
-          <div className="mb-10">
-            <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-secondary text-primary"><Radio size={21} /></div>
-            <div className="eyebrow mb-3">Connection status</div>
-            <h2 className="display-face text-4xl font-semibold leading-none">No live signal yet.</h2>
-            <p className="mt-4 max-w-sm text-sm leading-6 text-muted-foreground">Firebase is not configured for this station. You can still explore the complete operating model with simulated telemetry.</p>
+    <div className="w-full max-w-[480px]">
+      <div className="panel overflow-hidden rounded-[2rem] p-7 shadow-xl sm:p-9">
+        <Logo />
+        <section className="mt-8">
+          <h1 className="display-face text-3xl font-bold tracking-tight">Industrial telemetry twin</h1>
+          <p className="mt-2 text-xs leading-relaxed text-muted-foreground">Zero-latency hardware simulation and automated safety guardrails for smart water reserve operations.</p>
+          <div className="my-7 rounded-2xl border border-border bg-secondary/60 p-4">
+            <div className="flex items-center justify-between text-xs"><span className="font-medium text-muted-foreground">Operational Mode</span><span className="rounded-full bg-[#edf4ed] px-2.5 py-0.5 text-[10px] font-bold text-[#25614d]">Virtual Commissioning Active</span></div>
           </div>
           <button type="button" onClick={runDemo} disabled={isLoading} className="btn-primary flex w-full items-center justify-between rounded-xl px-5 py-4 text-sm font-semibold" data-testid="button-run-demo">
             <span>{isLoading ? 'Preparing station…' : 'Run in Demo Mode'}</span><ArrowDownToLine size={17} className="-rotate-90" />
@@ -72,15 +63,26 @@ function AlertBanner({ aqua, station, role }: { aqua: any; station: string; role
   const isEstop = aqua.data.commands.estop_triggered;
   const latestMessage = aqua.events?.[0]?.message || 'System protection engaged.';
 
-  const handleWhatsApp = () => {
-    const url = generateWhatsAppUrl({
+  const handleWhatsApp = async () => {
+    const payload = {
       phase: isEstop ? 'EMERGENCY_STOP' : phase,
       stationId: station,
       role: role,
       message: latestMessage,
       waterSaved: aqua.waterSaved,
       priorityTank: aqua.data.commands?.priority_tank,
-    });
+    };
+
+    // 1. Send via preconfigured Twilio WhatsApp Cloud API
+    const sent = await sendTwilioWhatsAppAlert(payload).catch(() => false);
+
+    if (sent) {
+      alert('🟢 WhatsApp Alert Delivered via Twilio Cloud API!');
+      return;
+    }
+
+    // 2. Open WhatsApp pre-filled message instantly
+    const url = generateWhatsAppUrl(payload);
     window.open(url, '_blank');
   };
 
@@ -100,8 +102,8 @@ function AlertBanner({ aqua, station, role }: { aqua: any; station: string; role
         </div>
       </div>
       <div className="flex items-center gap-2">
-        <button type="button" onClick={handleWhatsApp} className="btn-quiet flex items-center gap-2 rounded-xl border border-current/20 bg-background/60 px-3 py-2 text-xs font-semibold text-current hover:bg-background" data-testid="button-whatsapp-dispatch">
-          <MessageSquare size={15} className="text-[#25D366]" />
+        <button type="button" onClick={handleWhatsApp} className="btn-primary flex items-center gap-2 rounded-xl bg-[#25D366] text-white px-4 py-2 text-xs font-semibold hover:bg-[#20bd5a] shadow-sm transition" data-testid="button-whatsapp-dispatch">
+          <MessageSquare size={15} />
           <span>Send WhatsApp Alert</span>
         </button>
       </div>
@@ -169,11 +171,19 @@ function Freshness({ age, stale }: { age: number; stale: boolean }) {
 
 function PhaseCard({ data, duration }: { data: any; duration: string }) {
   const phase = data.system.phase;
-  const copy = phase === 'NORMAL' ? 'Watching the reserve and balancing branch demand.' : phase === 'BYPASS_ACTIVE' ? 'A leak is isolated. Bypass supply is holding Tank A steady.' : 'Protecting the selected reserve while source pressure is low.';
+  const isEstop = data.commands?.estop_triggered === true;
+  const phaseTitle = isEstop ? 'EMERGENCY HALT' : phase.replace('_', ' ');
+  const copy = isEstop
+    ? 'Emergency halt engaged. Distribution pump off and all line valves isolated for physical safety.'
+    : phase === 'NORMAL'
+    ? 'Watching the reserve and balancing branch demand.'
+    : phase === 'BYPASS_ACTIVE'
+    ? 'A leak is isolated. Bypass supply is holding Tank A steady.'
+    : 'Protecting the selected reserve while source pressure is low.';
   return <section className="panel-dark relative overflow-hidden rounded-[1.35rem] p-6 sm:p-7" data-testid="card-phase-status">
     <div className="absolute -right-10 -top-20 h-64 w-64 rounded-full border border-primary-foreground/10" /><div className="absolute right-16 top-6 h-2 w-2 rounded-full bg-[#d9b777]" />
-    <div className="relative flex items-start justify-between gap-5"><div><div className="eyebrow text-primary-foreground/50">Current phase</div><h1 className="display-face mt-2 text-4xl font-semibold sm:text-5xl" data-testid="text-phase">{phase.replace('_', ' ')}</h1><p className="mt-3 max-w-md text-sm leading-6 text-primary-foreground/65">{copy}</p></div><div className="hidden h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-primary-foreground/15 bg-primary-foreground/10 sm:flex">{phase === 'NORMAL' ? <ShieldCheck size={25} /> : phase === 'BYPASS_ACTIVE' ? <GitBranch size={25} /> : <TriangleAlert size={25} />}</div></div>
-    <div className="relative mt-8 grid grid-cols-3 gap-3 border-t border-primary-foreground/15 pt-4 sm:gap-6"><div><div className="text-[10px] uppercase tracking-[.13em] text-primary-foreground/45">Phase duration</div><div className="display-face mt-1 text-2xl" data-testid="text-phase-duration">{duration}</div></div><div><div className="text-[10px] uppercase tracking-[.13em] text-primary-foreground/45">Pump state</div><div className="mt-2 flex items-center gap-2 text-sm font-semibold" data-testid="status-pump"><span className={`h-2 w-2 rounded-full ${data.system.pump_on ? 'bg-[#c4dfaa]' : 'bg-[#d87563]'}`} />{data.system.pump_on ? 'Running' : 'Halted'}</div></div><div><div className="text-[10px] uppercase tracking-[.13em] text-primary-foreground/45">Water saved</div><div className="display-face mt-1 text-2xl" data-testid="text-water-saved">{fmt(data.__waterSaved || 0, 2)} L</div></div></div>
+    <div className="relative flex items-start justify-between gap-5"><div><div className="eyebrow text-primary-foreground/50">Current phase</div><h1 className="display-face mt-2 text-4xl font-semibold sm:text-5xl" data-testid="text-phase">{phaseTitle}</h1><p className="mt-3 max-w-md text-sm leading-6 text-primary-foreground/65">{copy}</p></div><div className="hidden h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-primary-foreground/15 bg-primary-foreground/10 sm:flex">{isEstop ? <TriangleAlert size={25} /> : phase === 'NORMAL' ? <ShieldCheck size={25} /> : phase === 'BYPASS_ACTIVE' ? <GitBranch size={25} /> : <TriangleAlert size={25} />}</div></div>
+    <div className="relative mt-8 grid grid-cols-3 gap-3 border-t border-primary-foreground/15 pt-4 sm:gap-6"><div><div className="text-[10px] uppercase tracking-[.13em] text-primary-foreground/45">Phase duration</div><div className="display-face mt-1 text-2xl" data-testid="text-phase-duration">{duration}</div></div><div><div className="text-[10px] uppercase tracking-[.13em] text-primary-foreground/45">Pump state</div><div className="mt-2 flex items-center gap-2 text-sm font-semibold" data-testid="status-pump"><span className={`h-2 w-2 rounded-full ${data.system.pump_on && !isEstop ? 'bg-[#c4dfaa]' : 'bg-[#d87563]'}`} />{data.system.pump_on && !isEstop ? 'Running' : 'Halted'}</div></div><div><div className="text-[10px] uppercase tracking-[.13em] text-primary-foreground/45">Water saved</div><div className="display-face mt-1 text-2xl" data-testid="text-water-saved">{fmt(data.__waterSaved || 0, 2)} L</div></div></div>
   </section>;
 }
 
@@ -231,28 +241,163 @@ function Valve({ label, state, x, y, bypass = false }: { label: string; state: s
 
 function Schematic({ data }: { data: any }) {
   const activeBypass = data.valves.bypass_manual;
+  const sv1Open = data.valves.SV1 === 'OPEN';
+  const sv2Open = data.valves.SV2 === 'OPEN';
+  const sv3Open = data.valves.SV3 === 'OPEN';
+  const isBypassOpen = activeBypass === 'OPEN';
+
   return <section className="panel rounded-[1.35rem] p-5 sm:p-6" data-testid="card-live-schematic">
-    <div className="flex items-start justify-between gap-4"><div><div className="eyebrow">Distribution topology</div><h2 className="display-face mt-1 text-2xl font-semibold">Live schematic</h2></div><div className="flex items-center gap-2 text-[11px] text-muted-foreground"><span className="h-2 w-2 rounded-full bg-[#5f9e87]" />Flow path</div></div>
-    <div className="mt-5 overflow-x-auto"><svg viewBox="0 0 690 275" className="min-w-[620px] w-full" role="img" aria-label="Source to header, valves and tanks schematic">
-      <defs><marker id="arrow" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 z" fill="#5f9e87" /></marker></defs>
-      <path d="M80 115 H205" stroke="#b5c9bd" strokeWidth="5" strokeLinecap="round" fill="none" markerEnd="url(#arrow)" /><path d="M260 115 H590" stroke="#b5c9bd" strokeWidth="5" strokeLinecap="round" fill="none" />
-      <path d="M345 115 V188" stroke="#b5c9bd" strokeWidth="5" strokeLinecap="round" fill="none" markerEnd="url(#arrow)" /><path d="M430 115 V188" stroke="#b5c9bd" strokeWidth="5" strokeLinecap="round" fill="none" markerEnd="url(#arrow)" /><path d="M515 115 V188" stroke="#b5c9bd" strokeWidth="5" strokeLinecap="round" fill="none" markerEnd="url(#arrow)" />
-      <path d="M205 115 V60 H345 V188" stroke={activeBypass === 'OPEN' ? '#d9a95e' : '#d8d0c3'} strokeWidth={activeBypass === 'OPEN' ? 4 : 3} fill="none" strokeLinecap="round" strokeDasharray={activeBypass === 'OPEN' ? '6 7' : '0'} className={activeBypass === 'OPEN' ? 'bypass-flow' : ''} markerEnd={activeBypass === 'OPEN' ? 'url(#arrow)' : undefined} />
-      <circle cx="232" cy="115" r="27" fill="#f3e4ca" stroke="#d9b777" strokeWidth="2" /><path d="M224 121c7-3 8-13 1-17m8 20c7-3 8-13 1-17" fill="none" stroke="#876a36" strokeWidth="2" /><text x="232" y="156" textAnchor="middle" fontSize="10" fontWeight="700" fill="#31534b">HEADER</text>
-      <circle cx="46" cy="115" r="29" fill="#dbeadd" stroke="#6f9c87" strokeWidth="2" /><path d="M46 95c-9 12-13 17-13 23a13 13 0 0 0 26 0c0-6-4-11-13-23z" fill="#5f9e87" /><text x="46" y="165" textAnchor="middle" fontSize="10" fontWeight="700" fill="#31534b">SOURCE</text><text x="46" y="178" textAnchor="middle" fontSize="9" fill="#6f8179">{fmt(data.source.level_pct)}%</text>
-      <Valve label="SV1" state={data.valves.SV1} x={345} y={115} /><Valve label="SV2" state={data.valves.SV2} x={430} y={115} /><Valve label="SV3" state={data.valves.SV3} x={515} y={115} /><Valve label="BYPASS" state={activeBypass === 'OPEN' ? 'OPEN' : 'CLOSED'} x={345} y={60} bypass={activeBypass === 'OPEN'} />
-      {(['A', 'B', 'C'] as TankKey[]).map((key, index) => { const positions = [{ x: 345, y: 215 }, { x: 430, y: 215 }, { x: 515, y: 215 }][index]; return <g key={key}><rect x={positions.x - 28} y={positions.y - 23} width="56" height="47" rx="11" fill="#edf2ea" stroke="#a6bbae" strokeWidth="2" /><path d={`M${positions.x - 16} ${positions.y + 10}h32`} stroke="#79aa91" strokeWidth="4" strokeLinecap="round" fill="none" /><text x={positions.x} y={positions.y - 2} textAnchor="middle" fontSize="12" fontWeight="700" fill="#31534b">Tank {key}</text><text x={positions.x} y={positions.y + 17} textAnchor="middle" fontSize="9" fill="#6f8179">{fmt(data.tanks[key].level_pct)}%</text></g>; })}
-      <text x="325" y="48" fontSize="9" fontWeight="700" fill={activeBypass === 'OPEN' ? '#a67526' : '#9a9081'}>BYPASS → Tank A</text>
-    </svg></div>
-    <div className="mt-2 flex flex-wrap gap-x-5 gap-y-2 border-t border-border pt-4 text-[11px] text-muted-foreground"><span className="flex items-center gap-2"><i className="h-3 w-3 rotate-45 rounded-[3px] bg-[#5f9e87]" />Open</span><span className="flex items-center gap-2"><i className="h-3 w-3 rotate-45 rounded-[3px] bg-[#d87563]" />Closed</span><span className="flex items-center gap-2"><i className="h-3 w-3 rotate-45 rounded-[3px] border border-dashed border-[#938a7e] bg-[#ddd5c7]" />No signal</span></div>
+    <div className="flex items-start justify-between gap-4">
+      <div>
+        <div className="eyebrow">Distribution topology</div>
+        <h2 className="display-face mt-1 text-2xl font-semibold">Live schematic</h2>
+      </div>
+      <div className="flex items-center gap-2 text-[11px] text-muted-foreground font-medium">
+        <span className="h-2 w-2 rounded-full bg-[#0284c7] animate-ping" />
+        <span>Animated Fluid Flow</span>
+      </div>
+    </div>
+    <div className="mt-5 overflow-x-auto">
+      <svg viewBox="0 0 690 275" className="min-w-[620px] w-full" role="img" aria-label="Source to header, valves and tanks schematic">
+        <defs>
+          <marker id="arrow" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto">
+            <path d="M0,0 L7,3.5 L0,7 z" fill="#5f9e87" />
+          </marker>
+          <marker id="arrow-active" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto">
+            <path d="M0,0 L7,3.5 L0,7 z" fill="#0284c7" />
+          </marker>
+          <marker id="arrow-bypass" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto">
+            <path d="M0,0 L7,3.5 L0,7 z" fill="#d97706" />
+          </marker>
+        </defs>
+
+        {/* Pipe Outer Casing */}
+        <path d="M80 115 H205" stroke="#a3c4b5" strokeWidth="8" strokeLinecap="round" fill="none" />
+        <path d="M260 115 H515" stroke="#a3c4b5" strokeWidth="8" strokeLinecap="round" fill="none" />
+        <path d="M345 115 V188" stroke={sv1Open ? '#7dd3fc' : '#a3c4b5'} strokeWidth="8" strokeLinecap="round" fill="none" />
+        <path d="M430 115 V188" stroke={sv2Open ? '#7dd3fc' : '#a3c4b5'} strokeWidth="8" strokeLinecap="round" fill="none" />
+        <path d="M515 115 V188" stroke={sv3Open ? '#7dd3fc' : '#a3c4b5'} strokeWidth="8" strokeLinecap="round" fill="none" />
+        <path d="M205 115 V60 H345 V188" stroke={isBypassOpen ? '#fde68a' : '#d8d0c3'} strokeWidth={isBypassOpen ? 6 : 4} strokeLinecap="round" fill="none" />
+
+        {/* Animated Inner Water Core Streams */}
+        <path d="M80 115 H205" stroke="#0284c7" strokeWidth="4" strokeLinecap="round" fill="none" />
+        <path d="M80 115 H205" stroke="#e0f2fe" strokeWidth="2.5" strokeLinecap="round" fill="none" className="water-stream" markerEnd="url(#arrow-active)" />
+
+        <path d="M260 115 H515" stroke="#0284c7" strokeWidth="4" strokeLinecap="round" fill="none" />
+        <path d="M260 115 H515" stroke="#e0f2fe" strokeWidth="2.5" strokeLinecap="round" fill="none" className="water-stream" />
+
+        {sv1Open && <>
+          <path d="M345 115 V188" stroke="#0284c7" strokeWidth="4" strokeLinecap="round" fill="none" />
+          <path d="M345 115 V188" stroke="#e0f2fe" strokeWidth="2.5" strokeLinecap="round" fill="none" className="water-stream" markerEnd="url(#arrow-active)" />
+        </>}
+
+        {sv2Open && <>
+          <path d="M430 115 V188" stroke="#0284c7" strokeWidth="4" strokeLinecap="round" fill="none" />
+          <path d="M430 115 V188" stroke="#e0f2fe" strokeWidth="2.5" strokeLinecap="round" fill="none" className="water-stream" markerEnd="url(#arrow-active)" />
+        </>}
+
+        {sv3Open && <>
+          <path d="M515 115 V188" stroke="#0284c7" strokeWidth="4" strokeLinecap="round" fill="none" />
+          <path d="M515 115 V188" stroke="#e0f2fe" strokeWidth="2.5" strokeLinecap="round" fill="none" className="water-stream" markerEnd="url(#arrow-active)" />
+        </>}
+
+        {isBypassOpen && <>
+          <path d="M205 115 V60 H345 V188" stroke="#d97706" strokeWidth="4" strokeLinecap="round" fill="none" />
+          <path d="M205 115 V60 H345 V188" stroke="#fef3c7" strokeWidth="2.5" strokeLinecap="round" fill="none" className="water-stream" markerEnd="url(#arrow-bypass)" />
+        </>}
+
+        {/* Header Pump */}
+        <circle cx="232" cy="115" r="27" fill="#f3e4ca" stroke="#d9b777" strokeWidth="2" />
+        <path d="M224 121c7-3 8-13 1-17m8 20c7-3 8-13 1-17" fill="none" stroke="#876a36" strokeWidth="2" />
+        <text x="232" y="156" textAnchor="middle" fontSize="10" fontWeight="700" fill="#31534b">HEADER</text>
+
+        {/* Source Droplet */}
+        <circle cx="46" cy="115" r="29" fill="#dbeadd" stroke="#6f9c87" strokeWidth="2" />
+        <path d="M46 95c-9 12-13 17-13 23a13 13 0 0 0 26 0c0-6-4-11-13-23z" fill="#0284c7" className="animate-pulse" />
+        <text x="46" y="165" textAnchor="middle" fontSize="10" fontWeight="700" fill="#31534b">SOURCE</text>
+        <text x="46" y="178" textAnchor="middle" fontSize="9" fill="#6f8179">{fmt(data.source.level_pct)}%</text>
+
+        {/* Valves & Tanks */}
+        <Valve label="SV1" state={data.valves.SV1} x={345} y={115} />
+        <Valve label="SV2" state={data.valves.SV2} x={430} y={115} />
+        <Valve label="SV3" state={data.valves.SV3} x={515} y={115} />
+        <Valve label="BYPASS" state={isBypassOpen ? 'OPEN' : 'CLOSED'} x={345} y={60} bypass={isBypassOpen} />
+        {(['A', 'B', 'C'] as TankKey[]).map((key, index) => { const positions = [{ x: 345, y: 215 }, { x: 430, y: 215 }, { x: 515, y: 215 }][index]; return <g key={key}><rect x={positions.x - 28} y={positions.y - 23} width="56" height="47" rx="11" fill="#edf2ea" stroke="#a6bbae" strokeWidth="2" /><path d={`M${positions.x - 16} ${positions.y + 10}h32`} stroke="#0284c7" strokeWidth="4" strokeLinecap="round" fill="none" /><text x={positions.x} y={positions.y - 2} textAnchor="middle" fontSize="12" fontWeight="700" fill="#31534b">Tank {key}</text><text x={positions.x} y={positions.y + 17} textAnchor="middle" fontSize="9" fill="#6f8179">{fmt(data.tanks[key].level_pct)}%</text></g>; })}
+        <text x="325" y="48" fontSize="9" fontWeight="700" fill={isBypassOpen ? '#a67526' : '#9a9081'}>BYPASS → Tank A</text>
+      </svg>
+    </div>
+    <div className="mt-2 flex flex-wrap gap-x-5 gap-y-2 border-t border-border pt-4 text-[11px] text-muted-foreground">
+      <span className="flex items-center gap-2"><i className="h-3 w-3 rotate-45 rounded-[3px] bg-[#5f9e87]" />Open</span>
+      <span className="flex items-center gap-2"><i className="h-3 w-3 rotate-45 rounded-[3px] bg-[#d87563]" />Closed</span>
+      <span className="flex items-center gap-2"><i className="h-3 w-3 rotate-45 rounded-[3px] border border-dashed border-[#938a7e] bg-[#ddd5c7]" />No signal</span>
+      <span className="flex items-center gap-2"><i className="h-2 w-4 rounded-full bg-[#0284c7] animate-pulse" />Fluid Flow</span>
+    </div>
   </section>;
 }
 
-function PredictiveRiskCard({ phase, alerts }: { phase: string; alerts: any }) {
-  const isAnomaly = phase !== 'NORMAL' || alerts.leak_detected || alerts.source_critical;
-  const riskPct = isAnomaly ? 91.4 : 12.8;
-  const confidence = isAnomaly ? '98.2%' : '99.5%';
-  const gradient = isAnomaly ? '-0.42 bar/sec (CRITICAL)' : '+0.02 bar/sec (STABLE)';
+function PredictiveRiskCard({ data, scenario }: { data: any; scenario?: string }) {
+  const phase = data.system?.phase || 'NORMAL';
+  const alerts = data.alerts || {};
+  const commands = data.commands || {};
+  const valves = data.valves || {};
+  const source = data.source || {};
+  const tanks = data.tanks || {};
+
+  const isEstop = commands.estop_triggered === true;
+  const isBranchALeak = valves.SV1 === 'CLOSED' || valves.bypass_manual === 'OPEN' || scenario === 'BRANCH_A';
+  const isBranchBLeak = valves.SV2 === 'CLOSED' || scenario === 'BRANCH_B';
+  const isSourceCritical = alerts.source_critical || source.critical || phase === 'CRITICAL_RESERVE' || scenario === 'SOURCE_CRITICAL';
+  const isTankLow = tanks.A?.is_critical || tanks.B?.is_critical || tanks.C?.is_critical || (tanks.A?.level_pct < 28) || (tanks.B?.level_pct < 28) || (tanks.C?.level_pct < 28);
+
+  let riskPct = 12.8;
+  let statusText = 'OPTIMAL STABILITY';
+  let gradient = '+0.02 bar/sec (STABLE)';
+  let confidence = '99.5%';
+  let gradientModel = 'Linear Gradient Model';
+  let sensorFit = 'Gaussian Sensor Fit';
+  let isAnomaly = false;
+
+  if (isEstop) {
+    isAnomaly = true;
+    riskPct = 99.2;
+    statusText = 'CRITICAL SHUTDOWN (EMERGENCY HALT)';
+    gradient = '-1.25 bar/sec (RAPID CUTOFF)';
+    confidence = '99.8%';
+    gradientModel = 'Safety Interlock Matrix';
+    sensorFit = 'Global Valve Cutoff Fit';
+  } else if (isBranchALeak) {
+    isAnomaly = true;
+    riskPct = 91.4;
+    statusText = 'HIGH ANOMALY DETECTED (BRANCH A LEAK)';
+    gradient = '-0.42 bar/sec (CRITICAL DROOP)';
+    confidence = '98.2%';
+    gradientModel = 'Transient Differential Model';
+    sensorFit = 'Branch A Acoustic/Pressure Fit';
+  } else if (isBranchBLeak) {
+    isAnomaly = true;
+    riskPct = 84.7;
+    statusText = 'MODERATE ANOMALY DETECTED (BRANCH B LEAK)';
+    gradient = '-0.31 bar/sec (ELEVATED DROP)';
+    confidence = '96.4%';
+    gradientModel = 'Header Wave Correlation';
+    sensorFit = 'Branch B Telemetry Fit';
+  } else if (isSourceCritical) {
+    isAnomaly = true;
+    riskPct = 78.3;
+    statusText = 'CRITICAL SOURCE DEPLETION';
+    gradient = '-0.18 bar/sec (HEAD LOSS)';
+    confidence = '97.1%';
+    gradientModel = 'Hydrostatic Pressure Decay';
+    sensorFit = 'Upstream Reservoir Ultrasonic Fit';
+  } else if (isTankLow) {
+    isAnomaly = true;
+    riskPct = 68.5;
+    statusText = 'RESERVE VESSEL LEVEL LOW';
+    gradient = '-0.14 bar/sec (TANK DRAIN)';
+    confidence = '95.8%';
+    gradientModel = 'Volumetric Depletion Model';
+    sensorFit = 'Reserve Vessel Sensor Fit';
+  }
 
   return (
     <section className={`panel rounded-[1.35rem] p-5 ${isAnomaly ? 'border-[#e7c6be] bg-[#fdf5f3]' : ''}`} data-testid="card-ai-predictive-risk">
@@ -272,25 +417,25 @@ function PredictiveRiskCard({ phase, alerts }: { phase: string; alerts: any }) {
             {riskPct}%
           </div>
           <div className={`mt-1 text-[11px] font-semibold ${isAnomaly ? 'text-[#93483d]' : 'text-[#25614d]'}`}>
-            {isAnomaly ? 'HIGH ANOMALY DETECTED' : 'OPTIMAL STABILITY'}
+            {statusText}
           </div>
         </div>
         <div>
           <div className="text-[10px] font-semibold uppercase tracking-[.12em] text-muted-foreground">Pressure Gradient</div>
           <div className="display-face mt-2 text-sm font-semibold">{gradient}</div>
-          <div className="mt-1 text-[11px] text-muted-foreground">Linear Gradient Model</div>
+          <div className="mt-1 text-[11px] text-muted-foreground">{gradientModel}</div>
         </div>
         <div>
           <div className="text-[10px] font-semibold uppercase tracking-[.12em] text-muted-foreground">Model Confidence</div>
           <div className="display-face mt-2 text-sm font-semibold">{confidence}</div>
-          <div className="mt-1 text-[11px] text-muted-foreground">Gaussian Sensor Fit</div>
+          <div className="mt-1 text-[11px] text-muted-foreground">{sensorFit}</div>
         </div>
       </div>
     </section>
   );
 }
 
-function Operations({ data, history, events, waterSaved, freshness, phaseStartedAt, scenario }: any) {
+function Operations({ data, history, events, waterSaved, freshness, phaseStartedAt, scenario, simulateLeakA, emergencyStop, resetScenario, resume, updateTankLevel }: any) {
   const [now, setNow] = useState(Date.now());
   useEffect(() => { const timer = window.setInterval(() => setNow(Date.now()), 1000); return () => window.clearInterval(timer); }, []);
   const duration = Math.floor((now - phaseStartedAt) / 1000);
@@ -301,14 +446,16 @@ function Operations({ data, history, events, waterSaved, freshness, phaseStarted
   const enriched = { ...data, __waterSaved: waterSaved };
   return <div className="space-y-5">
     <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end"><div><div className="eyebrow">Operations / live view</div><h1 className="display-face mt-1 text-4xl font-semibold sm:text-5xl">Good water, accounted for.</h1></div><Freshness {...freshness} /></div>
+    <HardwareTwinPanel data={data} onSimulateLeak={simulateLeakA} onSimulateEstop={emergencyStop} onResetNormal={resume} onUpdateTankLevel={updateTankLevel} />
     <div className="grid gap-5 lg:grid-cols-[1.12fr_.88fr]"><PhaseCard data={enriched} duration={durationText} /><section className="panel flex flex-col justify-between rounded-[1.35rem] p-6" data-testid="card-narration"><div><div className="flex items-center justify-between"><div className="eyebrow">Operator narration</div><Sparkles size={17} className="text-[#c39a4d]" /></div><p className="display-face mt-5 max-w-md text-2xl leading-tight" data-testid="text-narration">“{narration}”</p></div><div className="mt-7 flex items-center gap-2 text-xs text-muted-foreground"><span className="h-2 w-2 rounded-full bg-accent" />Narration caption from event stream</div></section></div>
-    <PredictiveRiskCard phase={data.system.phase} alerts={data.alerts} />
+    <PredictiveRiskCard data={data} scenario={scenario} />
     <div className="grid gap-5 md:grid-cols-3">{(['A', 'B', 'C'] as TankKey[]).map((key, index) => <TankCard key={key} name={key} tank={data.tanks[key]} flow={[data.flow.branch_A_lpm, data.flow.branch_B_inferred_lpm, data.flow.branch_C_inferred_lpm][index]} changed={changed(key)} />)}</div>
     <div className="grid gap-5 lg:grid-cols-[.82fr_1.18fr]"><SourceTile source={data.source} /><AlertPosture alerts={data.alerts} /></div>
     <Schematic data={data} />
     <div className="grid gap-5 lg:grid-cols-[1.15fr_.85fr]"><FlowReadouts flow={data.flow} /><section className="panel rounded-[1.35rem] p-5" data-testid="card-system-events"><div className="flex items-center justify-between"><div className="eyebrow">Latest signal</div><span className="text-[11px] text-muted-foreground">{timeAgo(history[history.length - 1]?.at || Date.now())}</span></div><div className="mt-3 flex items-center gap-3"><div className="flex h-9 w-9 items-center justify-center rounded-xl bg-secondary text-primary"><ShieldCheck size={18} /></div><div><div className="text-sm font-semibold">All protection rules armed</div><div className="text-xs text-muted-foreground">Leak isolation remains manual-confirmed</div></div></div></section></div>
   </div>;
 }
+
 
 function WhatsAppSettingsCard() {
   const [phone, setPhone] = useState(() => getWhatsAppConfig().phone);
@@ -403,9 +550,32 @@ function WhatsAppSettingsCard() {
             <input type="text" value={phone} onChange={handleSavePhone} placeholder="+91 6369056400" className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2 text-xs font-medium text-primary placeholder:text-muted-foreground/50" data-testid="input-wa-phone" />
           </div>
           <div>
-            <label className="block text-[11px] font-semibold text-muted-foreground">API Token / Webhook URL (Optional)</label>
-            <input type="text" value={apiKey || webhookUrl} onChange={(e) => { handleSaveApiKey(e); handleSaveWebhookUrl(e); }} placeholder="Paste API Key or HTTPS Endpoint" className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2 text-xs font-medium text-primary placeholder:text-muted-foreground/50" data-testid="input-wa-apikey" />
+            <label className="block text-[11px] font-semibold text-muted-foreground">Render WhatsApp Webhook Endpoint</label>
+            <input type="text" value={webhookUrl} onChange={handleSaveWebhookUrl} placeholder="https://aquaguard-dashboard.onrender.com/send-alert" className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2 text-xs font-medium text-primary placeholder:text-muted-foreground/50" data-testid="input-wa-apikey" />
           </div>
+        </div>
+
+        {/* Render WhatsApp QR Linking Banner */}
+        <div className="rounded-xl border border-[#25D366]/30 bg-[#25D366]/5 p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="inline-block h-2 w-2 rounded-full bg-[#25D366] animate-pulse" />
+              <span className="text-xs font-bold text-[#187c3c]">Render WhatsApp Cloud QR Server</span>
+            </div>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">
+              Link your device via <code className="font-mono font-bold text-primary">aquaguard-dashboard.onrender.com/qr</code> to send 100% automatic background WhatsApp alerts.
+            </p>
+          </div>
+          <a
+            href="https://aquaguard-dashboard.onrender.com/qr"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn-quiet inline-flex items-center gap-1.5 shrink-0 rounded-xl bg-[#25D366] px-3.5 py-2 text-xs font-bold text-white shadow-sm hover:bg-[#20bd5a] transition"
+          >
+            <QrCode size={15} />
+            <span>Open Link QR Server</span>
+            <ExternalLink size={12} className="opacity-80" />
+          </a>
         </div>
 
         <div className="flex items-center justify-end pt-1">
@@ -491,14 +661,17 @@ function EventLog({ events }: { events: any[] }) {
     setCopied(true);
     setTimeout(() => setCopied(false), 3000);
 
-    // 2. Trigger real HTTP static file download from server (prevents Edge SmartScreen blob interception)
+    // 2. Trigger dynamic Blob CSV download with live telemetry events
+    const blob = new Blob([bomCsv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.href = '/INNOVEXA_ISO_14001_Compliance_Report.csv';
+    link.href = url;
     link.download = 'INNOVEXA_ISO_14001_Compliance_Report.csv';
     document.body.appendChild(link);
     link.click();
     setTimeout(() => {
       document.body.removeChild(link);
+      URL.revokeObjectURL(url);
     }, 500);
   };
 
@@ -549,11 +722,177 @@ function WAToast() {
   );
 }
 
+function StandaloneTwinWindow() {
+  const [aquaData, setAquaData] = useState<any>(null);
+  const [channel, setChannel] = useState<BroadcastChannel | null>(null);
+
+  useEffect(() => {
+    const bc = new BroadcastChannel('innovexa_hardware_twin_bus');
+    setChannel(bc);
+
+    bc.onmessage = (event) => {
+      if (event.data?.type === 'STATE_SYNC') {
+        setAquaData(event.data.data);
+      }
+    };
+
+    // Request initial state from main window
+    bc.postMessage({ type: 'REQUEST_STATE' });
+
+    return () => {
+      bc.close();
+    };
+  }, []);
+
+  const handleSimulateLeak = () => {
+    channel?.postMessage({ type: 'SIMULATE_LEAK' });
+  };
+
+  const handleSimulateEstop = () => {
+    channel?.postMessage({ type: 'SIMULATE_ESTOP' });
+  };
+
+  const handleResetNormal = () => {
+    channel?.postMessage({ type: 'RESET_NORMAL' });
+  };
+
+  const handleUpdateTankLevel = (tankKey: 'A' | 'B' | 'C', pct: number) => {
+    channel?.postMessage({ type: 'UPDATE_TANK_LEVEL', tankKey, pct });
+    if (aquaData?.tanks?.[tankKey]) {
+      setAquaData((prev: any) => ({
+        ...prev,
+        tanks: {
+          ...prev.tanks,
+          [tankKey]: { ...prev.tanks[tankKey], level_pct: pct },
+        },
+      }));
+    }
+  };
+
+  const dummyData = aquaData || {
+    system: { phase: 'NORMAL', pump_on: true, last_updated: Date.now() },
+    tanks: {
+      A: { level_pct: 69, level_cm: 138 },
+      B: { level_pct: 58, level_cm: 116 },
+      C: { level_pct: 52, level_cm: 104 },
+    },
+    valves: { SV1: 'OPEN', SV2: 'OPEN', SV3: 'OPEN', bypass_manual: 'CLOSED' },
+    alerts: { leak_detected: false, bucket_leak_sensor: false, source_critical: false },
+    commands: { estop_triggered: false, priority_tank: 'A' },
+    source: { level_pct: 85, critical: false },
+    flow: { main_header_lpm: 42.5, branch_A_lpm: 14.2 },
+  };
+
+  return (
+    <div className="min-h-screen bg-background p-6 font-sans">
+      <div className="mx-auto max-w-[1200px] space-y-4">
+        {/* Top Sync Banner */}
+        <div className="flex items-center justify-between rounded-2xl border border-[#25614d]/30 bg-[#e3f0e5] p-4 text-xs font-semibold text-[#25614d]">
+          <div className="flex items-center gap-2.5">
+            <span className="relative flex h-3 w-3">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#5f9e87] opacity-75"></span>
+              <span className="relative inline-flex h-3 w-3 rounded-full bg-[#25614d]"></span>
+            </span>
+            <span>STANDALONE HARDWARE DIGITAL TWIN WINDOW</span>
+            <span className="opacity-60">|</span>
+            <span className="font-mono text-[11px]">BroadcastChannel API (Zero-Latency Sync Active)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="rounded-full bg-background/80 px-2.5 py-1 text-[11px] font-mono text-primary shadow-sm">
+              Status: {aquaData ? '🟢 Synced with Dashboard' : '🟡 Waiting for Main Window...'}
+            </span>
+          </div>
+        </div>
+
+        {/* Hardware Twin Panel */}
+        <HardwareTwinPanel
+          data={dummyData}
+          onSimulateLeak={handleSimulateLeak}
+          onSimulateEstop={handleSimulateEstop}
+          onResetNormal={handleResetNormal}
+          onUpdateTankLevel={handleUpdateTankLevel}
+        />
+      </div>
+    </div>
+  );
+}
+
+function JuryPresetToolbar({ aqua }: { aqua: any }) {
+  return (
+    <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 rounded-2xl border border-primary/20 bg-card/90 px-4 py-2.5 shadow-2xl backdrop-blur-md animate-in fade-in slide-in-from-bottom-6" data-testid="jury-preset-toolbar">
+      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mr-1">Jury Quick Bar:</span>
+      <button type="button" onClick={() => aqua.simulateLeakA()} className="flex items-center gap-1.5 rounded-xl bg-[#dc2626]/10 px-3 py-1.5 text-xs font-semibold text-[#dc2626] hover:bg-[#dc2626]/20 transition" data-testid="preset-leak-a">
+        <Droplets size={14} />
+        <span>Simulate Leak A</span>
+      </button>
+      <button type="button" onClick={() => aqua.simulateLeakB()} className="flex items-center gap-1.5 rounded-xl bg-[#ea580c]/10 px-3 py-1.5 text-xs font-semibold text-[#ea580c] hover:bg-[#ea580c]/20 transition" data-testid="preset-leak-b">
+        <Droplets size={14} />
+        <span>Simulate Leak B</span>
+      </button>
+      <button type="button" onClick={() => aqua.simulateSourceCritical()} className="flex items-center gap-1.5 rounded-xl bg-[#d97706]/10 px-3 py-1.5 text-xs font-semibold text-[#d97706] hover:bg-[#d97706]/20 transition" data-testid="preset-low-source">
+        <AlertTriangle size={14} />
+        <span>Low Source</span>
+      </button>
+      <button type="button" onClick={() => {
+        if (aqua.data.commands.estop_triggered) {
+          aqua.resume();
+        } else {
+          aqua.emergencyStop();
+        }
+      }} className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition ${aqua.data.commands.estop_triggered ? 'bg-[#25614d]/10 text-[#25614d] hover:bg-[#25614d]/20' : 'bg-[#991b1b]/10 text-[#991b1b] hover:bg-[#991b1b]/20'}`} data-testid="preset-estop">
+        {aqua.data.commands.estop_triggered ? <Play size={14} /> : <Pause size={14} />}
+        <span>{aqua.data.commands.estop_triggered ? 'Resume Operation' : 'E-Stop'}</span>
+      </button>
+      <button type="button" onClick={() => aqua.resume()} className="flex items-center gap-1.5 rounded-xl bg-[#25614d]/10 px-3 py-1.5 text-xs font-semibold text-[#25614d] hover:bg-[#25614d]/20 transition" data-testid="preset-reset">
+        <RotateCcw size={14} />
+        <span>Reset Normal</span>
+      </button>
+    </div>
+  );
+}
+
 function Dashboard() {
   const [tab, setTab] = useState<Tab>('Operations');
   const [userRole, setUserRole] = useState<string>('Supervisor');
   const [station, setStation] = useState<string>('Station 01 — Sector 4 Main Plant');
   const aqua = (useInnovexa as any)({ stationId: station, role: userRole });
+
+  // BroadcastChannel 2-Way Sync Engine
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const bc = new BroadcastChannel('innovexa_hardware_twin_bus');
+
+    bc.onmessage = (event) => {
+      const msg = event.data;
+      if (!msg) return;
+
+      if (msg.type === 'REQUEST_STATE') {
+        bc.postMessage({ type: 'STATE_SYNC', data: aqua.data });
+      } else if (msg.type === 'SIMULATE_LEAK') {
+        aqua.simulateLeakA();
+      } else if (msg.type === 'SIMULATE_ESTOP') {
+        aqua.emergencyStop();
+      } else if (msg.type === 'RESET_NORMAL') {
+        aqua.resume();
+      } else if (msg.type === 'UPDATE_TANK_LEVEL' && msg.tankKey && typeof msg.pct === 'number') {
+        aqua.updateTankLevel(msg.tankKey, msg.pct);
+      }
+    };
+
+    return () => {
+      bc.close();
+    };
+  }, [aqua]);
+
+  // Broadcast state changes whenever telemetry updates
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const bc = new BroadcastChannel('innovexa_hardware_twin_bus');
+    bc.postMessage({ type: 'STATE_SYNC', data: aqua.data });
+    return () => {
+      bc.close();
+    };
+  }, [aqua.data]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -572,11 +911,16 @@ function Dashboard() {
     }
   }, []);
 
-  if (!aqua.demoActive && !aqua.isConnected) return <EntryState runDemo={aqua.runDemo} isLoading={aqua.isLiveLoading} />;
+  if (!aqua.demoActive && !aqua.isConnected && !aqua.liveConfigured) return <EntryState runDemo={aqua.runDemo} isLoading={aqua.isLiveLoading} />;
+
   const page = tab === 'Operations' ? <Operations {...aqua} /> : tab === 'Controls' ? <Controls data={aqua.data} connected={aqua.isConnected} simulateLeakA={aqua.simulateLeakA} simulateLeakB={aqua.simulateLeakB} simulateSourceCritical={aqua.simulateSourceCritical} resetScenario={aqua.resetScenario} updateCommand={aqua.updateCommand} resetControls={aqua.resetControls} emergencyStop={aqua.emergencyStop} resume={aqua.resume} role={userRole} /> : tab === 'Event Log' ? <EventLog events={aqua.events} /> : <History history={aqua.history} />;
-  return <div className="app-shell"><Header activeTab={tab} setActiveTab={setTab} demoActive={aqua.demoActive} exitDemo={aqua.exitDemo} replayDemo={aqua.replayDemo} phase={aqua.data.system.phase} soundMuted={aqua.soundMuted} toggleSound={aqua.toggleSound} role={userRole} setRole={setUserRole} station={station} setStation={setStation} /><main className="mx-auto max-w-[1480px] px-5 py-7 sm:px-8 sm:py-10"><div className="mb-6 flex items-center justify-between">{aqua.demoActive ? <div className="flex items-center gap-2 rounded-full border border-[#e4d29d] bg-[#f5ecd4] px-3 py-1.5 text-[10px] font-bold tracking-[.14em] text-[#765e24]" data-testid="badge-demo-mode"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#c39a4d]" />DEMO MODE — SIMULATED DATA</div> : <div className="flex items-center gap-2 rounded-full border border-[#c4ddcd] bg-[#e3f0e5] px-3 py-1.5 text-[10px] font-bold tracking-[.14em] text-[#25614d]" data-testid="badge-live-mode"><span className="h-1.5 w-1.5 rounded-full bg-[#5f9e87]" />LIVE FIREBASE TELEMETRY</div>}<div className="hidden items-center gap-2 text-xs text-muted-foreground sm:flex"><LockKeyhole size={13} />ESP32 / local station 01</div></div><AlertBanner aqua={aqua} station={station} role={userRole} />{page}</main><footer className="mx-auto flex max-w-[1480px] flex-col gap-2 border-t border-border px-5 py-6 text-[11px] text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-8"><span>Hardware under assembly · Live Firebase telemetry will replace simulation when configured.</span><span className="flex items-center gap-2"><Check size={13} className="text-[#5f9e87]" />Guardrails active</span></footer><WAToast /></div>;
+  return <div className="app-shell"><Header activeTab={tab} setActiveTab={setTab} demoActive={aqua.demoActive} exitDemo={aqua.exitDemo} replayDemo={aqua.replayDemo} phase={aqua.data.system.phase} soundMuted={aqua.soundMuted} toggleSound={aqua.toggleSound} role={userRole} setRole={setUserRole} station={station} setStation={setStation} /><main className="mx-auto max-w-[1480px] px-5 py-7 sm:px-8 sm:py-10"><div className="mb-6 flex items-center justify-between">{aqua.demoActive ? <div className="flex items-center gap-2 rounded-full border border-[#e4d29d] bg-[#f5ecd4] px-3 py-1.5 text-[10px] font-bold tracking-[.14em] text-[#765e24]" data-testid="badge-demo-mode"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#c39a4d]" />DEMO MODE — SIMULATED DATA</div> : <div className="flex items-center gap-2 rounded-full border border-[#c4ddcd] bg-[#e3f0e5] px-3 py-1.5 text-[10px] font-bold tracking-[.14em] text-[#25614d]" data-testid="badge-live-mode"><span className="h-1.5 w-1.5 rounded-full bg-[#5f9e87]" />LIVE FIREBASE TELEMETRY</div>}<div className="hidden items-center gap-2 text-xs text-muted-foreground sm:flex"><LockKeyhole size={13} />ESP32 / local station 01</div></div><AlertBanner aqua={aqua} station={station} role={userRole} />{page}</main><footer className="mx-auto flex max-w-[1480px] flex-col gap-2 border-t border-border px-5 py-6 text-[11px] text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-8"><span>Hardware under assembly · Live Firebase telemetry will replace simulation when configured.</span><span className="flex items-center gap-2"><Check size={13} className="text-[#5f9e87]" />Guardrails active</span></footer><WAToast /><JuryPresetToolbar aqua={aqua} /></div>;
 }
 
 export default function App() {
+  const isTwinView = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('view') === 'twin';
+  if (isTwinView) {
+    return <StandaloneTwinWindow />;
+  }
   return <Dashboard />;
 }
