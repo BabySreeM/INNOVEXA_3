@@ -4,7 +4,6 @@
 [![PS 26217](https://img.shields.io/badge/SIH%20PS-26217%20%7C%20Sustainable%20Resource%20Management-green.svg?style=for-the-badge)](https://sih.gov.in/)
 [![PS 26219](https://img.shields.io/badge/SIH%20PS-26219%20%7C%20Intelligent%20AI%20Resource%20Insights-blue.svg?style=for-the-badge)](https://sih.gov.in/)
 [![ISO 14001](https://img.shields.io/badge/Compliance-ISO%2014001%20Environmental-emerald.svg?style=for-the-badge)](https://www.iso.org/iso-14001-environmental-management.html)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
 
 ---
 
@@ -286,7 +285,7 @@ INNOVEXA automatically logs all environmental parameters required by the **ISO 1
 
 ---
 
-## 📜 License & Copyright
+## 📜 Copyright & Attribution
 
 This project is submitted for the **Smart India Hackathon (SIH 2026)**.
-Developed by **Team INNOVEXA**. Distributed under the [MIT License](LICENSE).
+Developed by **Team INNOVEXA**. All rights reserved.
