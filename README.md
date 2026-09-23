@@ -11,14 +11,14 @@
 
 **INNOVEXA_3 (AquaGuard)** is an enterprise-grade, Hardware-in-the-Loop (HIL) IoT & Artificial Intelligence Digital Twin platform engineered to solve critical water distribution losses, prevent catastrophic pipe ruptures, optimize pump energy utilization, and provide automated emergency dispatching.
 
-By combining low-latency **ESP32 microcontroller telemetry**, **Firebase Realtime Database synchronization**, a dynamic **Predictive AI Risk Engine**, closed-loop **zero-water-loss bypass isolation**, and automated telemetry dispatches (**WhatsApp Baileys Bot** and **Web Speech Audio Alerts**), INNOVEXA provides end-to-end operational visibility and automated crisis remediation.
+By combining low-latency **ESP32 microcontroller telemetry**, **Firebase Realtime Database synchronization**, a dynamic **Predictive AI Risk Engine**, closed-loop **zero-water-loss bypass isolation**, and automated telemetry dispatches (**WhatsApp Baileys Bot** and **Web Speech Audio Alerts**), INNOVEXA_3 provides end-to-end operational visibility and automated crisis remediation.
 
 ---
 
 ## 👥 Team INNOVEXA_3 (SIH 2026)
 
 * **Problem Statements**: **PS 26217** (Sustainable Resource Management) & **PS 26219** (Intelligent Resource Transformation with AI Insights)
-* **Team Name**: Team INNOVEXA
+* **Team Name**: Team INNOVEXA_3
 
 | Sl. No. | Team Member Name | SIH Functional Role | Core Project Responsibilities |
 | :---: | :--- | :--- | :--- |
