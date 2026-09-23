@@ -1,4 +1,4 @@
-# 🌊 INNOVEXA (AquaGuard) | Next-Gen AI-Driven Sustainable Water Infrastructure & Digital Twin Platform
+# 🌊 INNOVEXA_3 (AquaGuard) | Next-Gen AI-Driven Sustainable Water Infrastructure & Digital Twin Platform
 
 [![Smart India Hackathon 2026](https://img.shields.io/badge/SIH-2026%20Grand%20Finale-orange.svg?style=for-the-badge&logo=india)](https://sih.gov.in/)
 [![PS 26217](https://img.shields.io/badge/SIH%20PS-26217%20%7C%20Sustainable%20Resource%20Management-green.svg?style=for-the-badge)](https://sih.gov.in/)
@@ -9,13 +9,13 @@
 
 ## 📌 Executive Overview
 
-**INNOVEXA (AquaGuard)** is an enterprise-grade, Hardware-in-the-Loop (HIL) IoT & Artificial Intelligence Digital Twin platform engineered to solve critical water distribution losses, prevent catastrophic pipe ruptures, optimize pump energy utilization, and provide automated emergency dispatching.
+**INNOVEXA_3 (AquaGuard)** is an enterprise-grade, Hardware-in-the-Loop (HIL) IoT & Artificial Intelligence Digital Twin platform engineered to solve critical water distribution losses, prevent catastrophic pipe ruptures, optimize pump energy utilization, and provide automated emergency dispatching.
 
 By combining low-latency **ESP32 microcontroller telemetry**, **Firebase Realtime Database synchronization**, a dynamic **Predictive AI Risk Engine**, closed-loop **zero-water-loss bypass isolation**, and automated telemetry dispatches (**WhatsApp Baileys Bot** and **Web Speech Audio Alerts**), INNOVEXA provides end-to-end operational visibility and automated crisis remediation.
 
 ---
 
-## 👥 Team INNOVEXA (SIH 2026)
+## 👥 Team INNOVEXA_3 (SIH 2026)
 
 * **Problem Statements**: **PS 26217** (Sustainable Resource Management) & **PS 26219** (Intelligent Resource Transformation with AI Insights)
 * **Team Name**: Team INNOVEXA
@@ -253,7 +253,7 @@ In a separate terminal window:
 node wokwi-twin.js
 ```
 
-#### 3. Start WhatsApp Telemetry Bot Server (Optional)
+#### 3. Start WhatsApp Telemetry Bot Server
 In a separate terminal window:
 ```bash
 cd artifacts/aquaguard
@@ -284,4 +284,4 @@ INNOVEXA automatically logs all environmental parameters required by the **ISO 1
 ## 📜 Copyright & Attribution
 
 This project is submitted for the **Smart India Hackathon (SIH 2026)**.
-Developed by **Team INNOVEXA**. All rights reserved.
+Developed by **Team INNOVEXA_3**. All rights reserved.
